@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'Rentals Demo',
@@ -25,6 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             © {new Date().getFullYear()} Rentals Demo
           </div>
         </footer>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

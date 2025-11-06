@@ -53,10 +53,10 @@ export default function AboutSection() {
         <h2 className="text-2xl font-semibold mb-4">Contact Information</h2>
         <div className="space-y-2 opacity-90">
           <p>
-            <strong>Phone:</strong> (613) 555-0123
+            <strong>Phone:</strong> (613) 123-4567
           </p>
           <p>
-            <strong>Email:</strong> info@rentalpropertiesottawa.com
+            <strong>Email:</strong> info@abcd.com
           </p>
           <p>
             <strong>Office Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM

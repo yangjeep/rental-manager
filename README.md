@@ -6,7 +6,7 @@ A ready-to-deploy demo environment for a rental listings website.
 
 ```bash
 npm install
-cp .env.example .env.local
+cp env.example .env.local
 # Edit NEXT_PUBLIC_LISTINGS_URL (Google Apps Script deploy URL)
 npm run dev
 ```

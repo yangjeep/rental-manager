@@ -36,3 +36,10 @@ Headers: `ID | Title | Slug | Price | City | Bedrooms | Status | ImageURL | Desc
 - Next.js App Router
 - Tailwind CSS
 - No backend server needed
+
+### New Columns (optional but supported)
+
+- `Parking` — accepts "Yes/No", "True/False", "1/0", or free text like "1 spot", "Street".
+- `Pets` — recommended values: "Allowed" / "Not Allowed" / "Conditional".
+- `UtilitiesIncluded` — comma-separated list, e.g., `Heat, Water, Electricity`.
+- `ImageURLs` — comma- or newline-separated image URLs for the gallery. First image will be used as the cover.

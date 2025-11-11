@@ -48,7 +48,6 @@ export default function PropertyTabs({ listing }: PropertyTabsProps) {
             <Info label="Status" value={listing.status} />
             <Info label="Parking" value={fmtParking(listing.parking)} />
             <Info label="Pets" value={listing.pets || "—"} />
-            <Info label="Utilities Included" value={listing.utilitiesIncluded?.join(", ") || "—"} />
             <Info label="Address" value={listing.address || "—"} />
             <Info label="Price" value={fmtPrice(listing.price)} />
             <Info label="Bedrooms" value={String(listing.bedrooms)} />
@@ -89,9 +88,8 @@ function fmtPrice(n: number) {
   return `$${(n || 0).toLocaleString()}`;
 }
 
-function fmtParking(v: any): string {
-  if (typeof v === "boolean") return v ? "Available" : "Not available";
-  if (typeof v === "string" && v.trim()) return v.trim();
+function fmtParking(v: string | undefined): string {
+  if (v && v.trim()) return v.trim();
   return "—";
 }
 

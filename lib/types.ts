@@ -2,17 +2,18 @@ export type Listing = {
   id: string;
   title: string;
   slug: string;
-  price: number;
+  price: number;                 // from "Monthly Rent"
   city: string;
-  bedrooms: number;
-  status: "Available" | "Rented" | "Pending";
-  imageUrl?: string;           // primary image (fallback)
-  images?: string[];           // multi-image gallery
-  description?: string;
   address?: string;
-
-  // New fields
-  parking?: string | boolean;  // e.g., "1 spot" or true/false
+  status: "Available" | "Rented" | "Pending" | string;
+  bedrooms: number;
+  bathrooms?: number;
+  parking?: string;              // e.g., "1 spot", "Available", "No"
   pets?: "Allowed" | "Not Allowed" | "Conditional" | string;
-  utilitiesIncluded?: string[]; // e.g., ["Water","Heat"]
+  description?: string;
+
+  imageUrl?: string;             // cover fallback
+  images?: string[];             // gallery (when DRIVE_LIST_ENDPOINT is set)
+  imageFolderUrl?: string;       // raw folder link
 };
+

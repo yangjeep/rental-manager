@@ -4,7 +4,7 @@ import type { Listing } from "@/lib/types";
 export default function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Link href={`/properties/${listing.slug}`} className="card overflow-hidden hover:border-white/30">
-      <img src={(listing.images && listing.images[0]) || listing.imageUrl} alt={listing.title} className="h-48 w-full object-cover" />
+      <img src={(listing.images && listing.images[0]) || listing.imageUrl || "/placeholder.jpg"} alt={listing.title} className="h-48 w-full object-cover" />
       <div className="p-4 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">{listing.title}</h3>
@@ -25,9 +25,8 @@ function Badge({ label }: { label?: string }) {
   return <span className="rounded-full border border-white/20 px-2 py-0.5">{label}</span>;
 }
 
-function fmtParkingShort(v: any): string | undefined {
-  if (typeof v === "boolean") return v ? "Parking" : undefined;
-  if (typeof v === "string" && v.trim()) return v;
+function fmtParkingShort(v: string | undefined): string | undefined {
+  if (v && v.trim()) return v.trim();
   return undefined;
 }
 

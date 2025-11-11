@@ -1,51 +1,130 @@
-import { slugify, parseBoolish, splitCSV } from "./utils";
+// lib/fetchListings.airtable.ts
 import type { Listing } from "./types";
-import fs from "node:fs/promises";
-import path from "node:path";
 
-export async function fetchListings(): Promise<Listing[]> {
-  const url = process.env.NEXT_PUBLIC_LISTINGS_URL;
-  const revalidate = Number(process.env.REVALIDATE_SECONDS || 3600);
-
-  try {
-    if (!url) throw new Error("NEXT_PUBLIC_LISTINGS_URL not set");
-    const res = await fetch(url, { next: { revalidate } });
-    if (!res.ok) throw new Error(`Failed to fetch listings: ${res.status}`);
-    const rows = await res.json();
-    return normalize(rows);
-  } catch (e) {
-    const p = path.join(process.cwd(), "data", "listings.sample.json");
-    const raw = await fs.readFile(p, "utf-8");
-    const rows = JSON.parse(raw);
-    return normalize(rows);
-  }
+// ---------- helpers ----------
+function slugify(s: string) {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+function toNum(v: any): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function parseBoolish(v: any): boolean | undefined {
+  if (v === undefined || v === null) return undefined;
+  const s = String(v).trim().toLowerCase();
+  if (["y", "yes", "true", "1"].includes(s)) return true;
+  if (["n", "no", "false", "0"].includes(s)) return false;
+  return undefined;
+}
+/** 支持粘贴整条 Google Drive folder 链接 或 直接粘 folderId */
+function parseDriveFolderId(input?: string | null): string | undefined {
+  if (!input) return undefined;
+  const s = String(input).trim();
+  // .../drive/folders/<id>
+  const m = s.match(/\/folders\/([A-Za-z0-9_\-]+)/);
+  if (m) return m[1];
+  // 直接给了 id
+  if (/^[A-Za-z0-9_\-]{10,}$/.test(s)) return s;
+  return undefined;
 }
 
-function normalize(rows: any[]): Listing[] {
-  return rows.map((r: any) => {
-    const utilities = splitCSV(r.UtilitiesIncluded);
-    const gallery = splitCSV(r.ImageURLs);
-    const parkingBool = parseBoolish(r.Parking);
-    // prefer explicit text like "1 spot" if provided
-    const parking = (typeof r.Parking === "string" && !/^(y|yes|true|1|n|no|false|0)$/i.test(r.Parking.trim()))
-      ? String(r.Parking).trim()
-      : parkingBool;
+// ---------- airtable fetch ----------
+type AirtableRecord = { id: string; fields: Record<string, any> };
+
+export async function fetchListings(): Promise<Listing[]> {
+  const token = process.env.AIRTABLE_TOKEN!;
+  const baseId = process.env.AIRTABLE_BASE_ID!;
+  const table = process.env.AIRTABLE_TABLE_NAME || "Properties";
+  if (!token || !baseId) {
+    throw new Error("Missing AIRTABLE_TOKEN or AIRTABLE_BASE_ID");
+  }
+
+  // 拉取 100 条，可按需分页扩展
+  const url =
+    `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}` +
+    `?pageSize=100&sort[0][field]=Title`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    // 直接实时读取（ISR 由页面层控制）
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Airtable fetch failed: ${res.status}`);
+  const json = await res.json();
+
+  // 先做基础字段映射
+  const baseItems: Listing[] = (json.records as AirtableRecord[]).map(({ fields }) => {
+    // 基础字段名完全按你截图里的列来取：
+    const title: string = fields["Title"] ?? "";
+    // Ensure slug is always a string
+    const rawSlug = fields["Slug"];
+    const slug: string = rawSlug != null ? String(rawSlug) : slugify(title);
+    const price: number = toNum(fields["Monthly Rent"]);
+    const bedrooms: number = toNum(fields["Bedrooms"]);
+    const bathrooms: number = toNum(fields["Bathrooms"]);
+    const status: string = fields["Status"] ?? "Available";
+    const city: string = fields["City"] ?? "";
+    const address: string = fields["Address"] ?? "";
+    const description: string = fields["Description"] ?? "";
+    const pets: string | undefined = fields["Pets"] ?? undefined;
+
+    // Parking is always text - convert to string
+    const rawParking = fields["Parking"];
+    const parking = rawParking != null ? String(rawParking).trim() : undefined;
+
+    // 封面：如果你以后加了 Attachments 字段，这里可优先取附件的第一张
+    const imageFolderUrl: string | undefined = fields["Image Folder URL"] || undefined;
 
     return {
-      id: r.ID || crypto.randomUUID(),
-      title: r.Title,
-      slug: r.Slug || slugify(r.Title),
-      price: Number(r.Price || 0),
-      city: r.City || "",
-      bedrooms: Number(r.Bedrooms || 0),
-      status: r.Status || "Available",
-      imageUrl: r.ImageURL || "/placeholder.jpg",
-      images: gallery && gallery.length ? gallery : undefined,
-      description: r.Description || "",
-      address: r.Address || "",
+      id: fields["ID"] ? String(fields["ID"]) : slug || crypto.randomUUID(),
+      title,
+      slug,
+      price,
+      city,
+      address,
+      status,
+      bedrooms,
+      bathrooms: bathrooms || undefined,
       parking,
-      pets: r.Pets || undefined,
-      utilitiesIncluded: utilities,
-    } as Listing;
+      pets,
+      description,
+      imageFolderUrl,
+      imageUrl: "/placeholder.jpg", // 默认使用 placeholder
+      images: undefined,   // 若配置了 DRIVE_LIST_ENDPOINT，会去拉取
+    };
   });
+
+  // 若你提供了"通过 folderId 列出图片"的端点，则顺序拉取图片列表
+  const listEndpoint = process.env.DRIVE_LIST_ENDPOINT;
+  if (!listEndpoint) {
+    // 没有端点：直接返回（前端可用 imageFolderUrl 做"查看相册"跳转）
+    return baseItems;
+  }
+
+  // 顺序拉取图片列表
+  for (const item of baseItems) {
+    const folderId = parseDriveFolderId(item.imageFolderUrl);
+    if (!folderId) continue;
+    try {
+      const u = new URL(listEndpoint);
+      u.searchParams.set("folder", folderId);
+      const r = await fetch(u.toString(), { cache: "no-store" });
+      if (r.ok) {
+        const arr = (await r.json()) as string[];
+        if (Array.isArray(arr) && arr.length) {
+          item.images = arr;
+          item.imageUrl = arr[0];
+        }
+      }
+    } catch {}
+  }
+  
+  // 确保所有 items 都有 imageUrl，如果没有则使用 placeholder
+  for (const item of baseItems) {
+    if (!item.imageUrl || item.imageUrl.trim() === "") {
+      item.imageUrl = "/placeholder.jpg";
+    }
+  }
+
+  return baseItems;
 }

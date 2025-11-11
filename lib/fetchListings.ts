@@ -44,10 +44,10 @@ export async function fetchListings(): Promise<Listing[]> {
     `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}` +
     `?pageSize=100&sort[0][field]=Title`;
 
+  // Cache Airtable data for 60 seconds
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    // 直接实时读取（ISR 由页面层控制）
-    cache: "no-store",
+    next: { revalidate: 60 }, // Cache for 60 seconds
   });
   if (!res.ok) throw new Error(`Airtable fetch failed: ${res.status}`);
   const json = await res.json();
@@ -101,22 +101,33 @@ export async function fetchListings(): Promise<Listing[]> {
     return baseItems;
   }
 
-  // 顺序拉取图片列表
+  // 顺序拉取图片列表（缓存 1 小时）
   for (const item of baseItems) {
     const folderId = parseDriveFolderId(item.imageFolderUrl);
-    if (!folderId) continue;
+    if (!folderId) {
+      continue;
+    }
     try {
       const u = new URL(listEndpoint);
       u.searchParams.set("folder", folderId);
-      const r = await fetch(u.toString(), { cache: "no-store" });
+      const endpointUrl = u.toString();
+      // Cache image URLs for 1 hour (images don't change often)
+      const r = await fetch(endpointUrl, { 
+        next: { revalidate: 3600 } // Cache for 1 hour
+      });
       if (r.ok) {
-        const arr = (await r.json()) as string[];
-        if (Array.isArray(arr) && arr.length) {
-          item.images = arr;
-          item.imageUrl = arr[0];
+        const data = await r.json();
+        // Handle both array response and error object response
+        if (Array.isArray(data) && data.length > 0) {
+          // Proxy images through Next.js API route to avoid CORS/issues
+          item.images = data.map(url => `/api/image?url=${encodeURIComponent(url)}`);
+          item.imageUrl = `/api/image?url=${encodeURIComponent(data[0])}`;
         }
+        // Silently ignore errors - images will fall back to placeholder
       }
-    } catch {}
+    } catch (error) {
+      // Silently ignore errors - images will fall back to placeholder
+    }
   }
   
   // 确保所有 items 都有 imageUrl，如果没有则使用 placeholder

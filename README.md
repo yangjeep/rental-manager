@@ -36,6 +36,31 @@ Table name: `Properties` (default, configurable via `AIRTABLE_TABLE_NAME`)
 - `Parking` — Parking information (accepts "Yes/No", "True/False", "1/0", or free text like "1 spot", "Street")
 - `Image Folder URL` — Google Drive folder URL or folder ID for property images
 
+### Setting Up Google Drive Images
+
+To automatically fetch images from Google Drive folders:
+
+1. **In Airtable**: Add the `Image Folder URL` field to your Properties table. For each property, paste either:
+   - The full Google Drive folder URL (e.g., `https://drive.google.com/drive/folders/1ABC123...`)
+   - Or just the folder ID (e.g., `1ABC123...`)
+
+2. **Deploy Google Apps Script**:
+   - Go to [Google Apps Script](https://script.google.com)
+   - Create a new project
+   - Copy the code from `scripts/apps_script.gs` into the editor
+   - Click "Deploy" → "New deployment"
+   - Choose type: "Web app"
+   - Set "Execute as": "Me"
+   - Set "Who has access": "Anyone"
+   - Click "Deploy" and copy the web app URL
+
+3. **Add to Environment Variables**:
+   - Add `DRIVE_LIST_ENDPOINT=<your-apps-script-url>` to your `.env.local`
+   - The endpoint will be called as: `DRIVE_LIST_ENDPOINT?folder=<folderId>`
+   - It should return a JSON array of image URLs
+
+**Note**: Without `DRIVE_LIST_ENDPOINT`, the app will still work but won't automatically load images. You can use `imageFolderUrl` to link to the Google Drive folder directly.
+
 ## Security / Demo
 
 - Basic Auth is enabled via `middleware.ts` using `DEMO_USER`/`DEMO_PASS`.
@@ -58,4 +83,4 @@ Table name: `Properties` (default, configurable via `AIRTABLE_TABLE_NAME`)
 - `AIRTABLE_TOKEN` — Airtable API token (required)
 - `AIRTABLE_BASE_ID` — Airtable base ID (required)
 - `AIRTABLE_TABLE_NAME` — Table name (optional, defaults to "Properties")
-- `DRIVE_LIST_ENDPOINT` — Optional endpoint for fetching images from Google Drive folders
+- `DRIVE_LIST_ENDPOINT` — Optional endpoint for fetching images from Google Drive folders (see "Setting Up Google Drive Images" above)

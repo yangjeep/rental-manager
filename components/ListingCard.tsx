@@ -2,9 +2,21 @@ import Link from "next/link";
 import type { Listing } from "@/lib/types";
 
 export default function ListingCard({ listing }: { listing: Listing }) {
+  const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder.jpg";
+  
   return (
     <Link href={`/properties/${listing.slug}`} className="card overflow-hidden hover:border-white/30">
-      <img src={(listing.images && listing.images[0]) || listing.imageUrl || "/placeholder.jpg"} alt={listing.title} className="h-48 w-full object-cover" />
+      <img 
+        src={imageSrc}
+        alt={listing.title} 
+        className="h-48 w-full object-cover"
+        onError={(e) => {
+          // Fallback to placeholder if image fails to load
+          if ((e.target as HTMLImageElement).src !== "/placeholder.jpg") {
+            (e.target as HTMLImageElement).src = "/placeholder.jpg";
+          }
+        }}
+      />
       <div className="p-4 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">{listing.title}</h3>

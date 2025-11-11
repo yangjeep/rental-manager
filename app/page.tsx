@@ -2,6 +2,9 @@ import HomeTabs from "@/components/HomeTabs";
 import { fetchListings } from "@/lib/fetchListings";
 import type { Listing } from "@/lib/types";
 
+// Revalidate every 60 seconds (or use REVALIDATE_SECONDS env var)
+export const revalidate = Number(process.env.REVALIDATE_SECONDS) || 60;
+
 export default async function Home({ searchParams }: { searchParams: any }) {
   const all = await fetchListings();
   const filtered = applyFilters(all, searchParams);

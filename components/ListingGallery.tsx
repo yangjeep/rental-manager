@@ -14,6 +14,12 @@ export default function ListingGallery({ images = [] as string[], alt = "" }) {
           src={displayImages[idx]}
           alt={alt}
           className="w-full rounded-2xl border border-white/10 object-cover max-h-[520px]"
+          onError={(e) => {
+            // Fallback to placeholder if image fails to load
+            if (displayImages[idx] !== "/placeholder.jpg") {
+              (e.target as HTMLImageElement).src = "/placeholder.jpg";
+            }
+          }}
         />
         {displayImages.length > 1 && (
           <>

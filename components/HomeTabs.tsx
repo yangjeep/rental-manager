@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import Filters from "@/components/Filters";
 import ListingCard from "@/components/ListingCard";
 import TabbedLayout, { type Tab } from "@/components/TabbedLayout";
@@ -19,7 +20,9 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
       label: "Overview",
       content: (
         <div className="space-y-6">
-          <Filters allListings={allListings || filteredListings} />
+          <Suspense fallback={<div className="card p-4">Loading filters...</div>}>
+            <Filters allListings={allListings || filteredListings} />
+          </Suspense>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredListings.map((l: Listing) => (
               <ListingCard key={l.id} listing={l} />
@@ -36,7 +39,9 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
       label: "Map",
       content: (
         <div className="space-y-6">
-          <Filters allListings={allListings || filteredListings} />
+          <Suspense fallback={<div className="card p-4">Loading filters...</div>}>
+            <Filters allListings={allListings || filteredListings} />
+          </Suspense>
           <GoogleMap listings={filteredListings} height="600px" />
         </div>
       ),
@@ -46,7 +51,9 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
       label: "Details",
       content: (
         <div className="space-y-6">
-          <Filters allListings={allListings || filteredListings} />
+          <Suspense fallback={<div className="card p-4">Loading filters...</div>}>
+            <Filters allListings={allListings || filteredListings} />
+          </Suspense>
           <div className="card p-6">
             <h2 className="text-2xl font-semibold mb-4">Property Statistics</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

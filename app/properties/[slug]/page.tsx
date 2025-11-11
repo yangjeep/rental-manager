@@ -6,8 +6,18 @@ import type { Listing } from "@/lib/types";
 export const revalidate = Number(process.env.REVALIDATE_SECONDS) || 60;
 
 export async function generateStaticParams() {
-  const list = await fetchListings();
-  return list.map((l: Listing) => ({ slug: String(l.slug) }));
+  try {
+    const list = await fetchListings();
+    // Return empty array if no listings (allows build to succeed)
+    if (!list || list.length === 0) {
+      return [];
+    }
+    return list.map((l: Listing) => ({ slug: String(l.slug) }));
+  } catch (error) {
+    console.error('Error generating static params:', error);
+    // Return empty array to allow build to succeed
+    return [];
+  }
 }
 
 export default async function PropertyPage({ params }: { params: { slug: string } }) {

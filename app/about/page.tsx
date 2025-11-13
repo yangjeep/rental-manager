@@ -28,7 +28,7 @@ export default function AboutPage() {
             We review every application carefully and coordinate in-person or virtual tours to help you evaluate the space. Once approved, signing and payments are handled securely online.
           </p>
           <p className="m-0 text-muted leading-relaxed">
-            Questions? <a href="mailto:rentals@example.com" className="text-accent no-underline">Email our team</a> and we'll get back to you quickly.
+            Questions? <a href="mailto:rentals@example.com" className="text-accent no-underline">Email our team</a> and we&apos;ll get back to you quickly.
           </p>
         </article>
       </section>

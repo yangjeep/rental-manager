@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { fetchListings } from '@/lib/fetchListings';
 
+export const runtime = 'edge';
+
 export async function GET(request: Request) {
   const listings = await fetchListings();
   const url = new URL(request.url);

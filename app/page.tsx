@@ -4,6 +4,8 @@ import { FilterControls } from '@/components/FilterControls';
 import { SITE_TITLE, DESCRIPTION } from '@/lib/pages/shared';
 import type { Listing } from '@/lib/types';
 
+export const runtime = 'edge';
+
 interface HomePageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }

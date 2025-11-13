@@ -4,6 +4,8 @@ import { fetchListings } from '@/lib/fetchListings';
 import { PropertyGallery } from '@/components/PropertyGallery';
 import { formatPrice, SITE_TITLE } from '@/lib/pages/shared';
 
+export const runtime = 'edge';
+
 interface PropertyPageProps {
   params: {
     slug: string;

@@ -1,0 +1,17 @@
+name = "rental-manager-image-sync"
+main = "src/index.ts"
+compatibility_date = "2024-11-13"
+
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "rental-manager-images"
+
+# Environment Variables (non-sensitive)
+[vars]
+# Add non-sensitive vars here if needed
+
+# Secrets (add via: npx wrangler secret put SECRET_NAME)
+# - GOOGLE_DRIVE_API_KEY or GOOGLE_SERVICE_ACCOUNT_JSON
+# - AIRTABLE_WEBHOOK_SECRET
+

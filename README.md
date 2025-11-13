@@ -36,9 +36,72 @@ Table name: `Properties` (default, configurable via `AIRTABLE_TABLE_NAME`)
 - `Parking` — Parking information (accepts "Yes/No", "True/False", "1/0", or free text like "1 spot", "Street")
 - `Image Folder URL` — Google Drive folder URL or folder ID for property images
 
-### Setting Up Google Drive Images
+### Setting Up Images
 
-To automatically fetch images from Google Drive folders:
+This project supports **two image storage methods**:
+1. **Cloudflare R2** (Recommended) - Fast, unlimited bandwidth, automatic sync
+2. **Google Drive** (Fallback) - Manual setup, used as fallback if R2 images unavailable
+
+#### Option 1: Cloudflare R2 with Automatic Sync (Recommended)
+
+Images are automatically synced from Google Drive to Cloudflare R2 when you update the `Image Folder URL` field in AirTable.
+
+**Setup Steps:**
+
+1. **Set up Cloudflare R2 Bucket** (See `R2_SETUP.md` for detailed instructions)
+   - Create R2 bucket in Cloudflare Dashboard
+   - Enable public access and note the public URL
+   - Add `R2_PUBLIC_URL` to your `.env.local`
+
+2. **Set up Google Drive API** (See `GOOGLE_DRIVE_SETUP.md` for detailed instructions)
+   - Create API key or service account in Google Cloud Console
+   - Enable Google Drive API
+
+3. **Deploy Cloudflare Worker**:
+   ```bash
+   cd worker
+   npm install
+   
+   # Set up secrets
+   npx wrangler secret put GOOGLE_DRIVE_API_KEY
+   npx wrangler secret put AIRTABLE_WEBHOOK_SECRET
+   
+   # Deploy
+   npm run deploy
+   # Note the Worker URL (e.g., https://rental-manager-image-sync.your-subdomain.workers.dev)
+   ```
+
+4. **Configure AirTable Automation**:
+   - In your AirTable base, go to **Automations**
+   - Click **Create automation**
+   - **Trigger**: "When record matches conditions"
+     - Table: `Properties`
+     - Field: `Image Folder URL`
+     - Condition: "is not empty"
+   - **Action**: "Send webhook"
+     - URL: `https://your-worker-url.workers.dev/sync-images`
+     - Method: `POST`
+     - Headers: Add `X-Webhook-Secret` with your secret value
+     - Body (JSON):
+       ```json
+       {
+         "recordId": "{{AIRTABLE_RECORD_ID()}}",
+         "slug": "{{Slug}}",
+         "imageFolderUrl": "{{Image Folder URL}}"
+       }
+       ```
+   - Test the automation and turn it on
+
+**How it works:**
+- Realtor pastes Google Drive folder URL into AirTable
+- AirTable triggers webhook to Cloudflare Worker
+- Worker downloads images from Drive and uploads to R2
+- First image becomes the thumbnail (`image-1.jpg`)
+- Next.js app fetches images from R2 (fast, unlimited bandwidth)
+
+#### Option 2: Google Drive Only (Fallback/Alternative)
+
+If R2 is not set up, images can be fetched directly from Google Drive:
 
 1. **In Airtable**: Add the `Image Folder URL` field to your Properties table. For each property, paste either:
    - The full Google Drive folder URL (e.g., `https://drive.google.com/drive/folders/1ABC123...`)
@@ -59,7 +122,14 @@ To automatically fetch images from Google Drive folders:
    - The endpoint will be called as: `DRIVE_LIST_ENDPOINT?folder=<folderId>`
    - It should return a JSON array of image URLs
 
-**Note**: Without `DRIVE_LIST_ENDPOINT`, the app will still work but won't automatically load images. You can use `imageFolderUrl` to link to the Google Drive folder directly.
+**Image Resolution Priority:**
+1. Try R2 first:
+   - If `R2_PUBLIC_URL` is set: Use public URL with HEAD requests (simpler)
+   - Otherwise: Use R2 API with credentials (if configured)
+2. Fallback to Google Drive (if `DRIVE_LIST_ENDPOINT` is set)
+3. Finally, use placeholder images
+
+**Note:** For production, you can use R2 API credentials for more efficient listing. For demo/dev, just using `R2_PUBLIC_URL` is simpler and sufficient.
 
 ## Security / Demo
 
@@ -118,8 +188,15 @@ Results are uploaded as artifacts and the workflow will fail if performance thre
 
 ### Environment Variables
 
-- `AIRTABLE_TOKEN` — Airtable API token (required)
-- `AIRTABLE_BASE_ID` — Airtable base ID (required)
-- `AIRTABLE_TABLE_NAME` — Table name (optional, defaults to "Properties")
-- `DRIVE_LIST_ENDPOINT` — Optional endpoint for fetching images from Google Drive folders (see "Setting Up Google Drive Images" above)
+**Required:**
+- `AIRTABLE_TOKEN` — Airtable API token
+- `AIRTABLE_BASE_ID` — Airtable base ID
+
+**Optional:**
+- `AIRTABLE_TABLE_NAME` — Table name (defaults to "Properties")
+- `R2_PUBLIC_URL` — Cloudflare R2 public URL for image storage (recommended)
+- `DRIVE_LIST_ENDPOINT` — Google Drive images endpoint (fallback if R2 not available)
+
+**For image sync (if using R2):**
+- See `worker/README.md` for Worker-specific environment variables
 

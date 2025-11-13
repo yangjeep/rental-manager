@@ -1,5 +1,6 @@
 // lib/fetchListings.airtable.ts
 import type { Listing } from "./types";
+import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 // ---------- helpers ----------
 function slugify(s: string) {
@@ -26,6 +27,119 @@ function parseDriveFolderId(input?: string | null): string | undefined {
   // 直接给了 id
   if (/^[A-Za-z0-9_\-]{10,}$/.test(s)) return s;
   return undefined;
+}
+
+/**
+ * Fetch images from R2 bucket using public URL (HEAD requests)
+ * Tries to find images at: /properties/{slug}/image-1.jpg, image-2.jpg, etc.
+ */
+async function fetchImagesFromR2PublicUrl(slug: string, r2PublicUrl: string): Promise<string[]> {
+  const images: string[] = [];
+  const maxImages = 20; // Try up to 20 images
+
+  // Common image extensions to try
+  const extensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+  for (let i = 1; i <= maxImages; i++) {
+    let found = false;
+
+    // Try each extension
+    for (const ext of extensions) {
+      const imageUrl = `${r2PublicUrl}/properties/${slug}/image-${i}.${ext}`;
+      
+      try {
+        // Use HEAD request to check if image exists (faster than GET)
+        const response = await fetch(imageUrl, { 
+          method: 'HEAD',
+          next: { revalidate: 3600 } // Cache for 1 hour
+        });
+        
+        if (response.ok) {
+          images.push(imageUrl);
+          found = true;
+          break; // Found this index, move to next
+        }
+      } catch (error) {
+        // Silently ignore fetch errors
+        continue;
+      }
+    }
+
+    // If we didn't find this index, assume no more images exist
+    if (!found) {
+      break;
+    }
+  }
+
+  return images;
+}
+
+/**
+ * Fetch images from R2 bucket using S3 API (with credentials)
+ * Lists all objects in properties/{slug}/ folder
+ */
+async function fetchImagesFromR2Api(slug: string): Promise<string[]> {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_BUCKET_NAME || 'rental-manager-images';
+  const publicUrl = process.env.R2_PUBLIC_URL;
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !publicUrl) {
+    return [];
+  }
+
+  try {
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      Prefix: `properties/${slug}/`,
+    });
+
+    const response = await s3Client.send(command);
+
+    if (!response.Contents || response.Contents.length === 0) {
+      return [];
+    }
+
+    // Sort by key (which includes image-1, image-2, etc.)
+    const images = response.Contents
+      .filter(obj => obj.Key && /\.(jpg|jpeg|png|webp|gif)$/i.test(obj.Key))
+      .sort((a, b) => (a.Key || '').localeCompare(b.Key || ''))
+      .map(obj => `${publicUrl}/${obj.Key}`);
+
+    return images;
+  } catch (error) {
+    console.error('Error fetching from R2 API:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch images from R2 - tries public URL first, then API credentials
+ */
+async function fetchImagesFromR2(slug: string): Promise<string[]> {
+  const r2PublicUrl = process.env.R2_PUBLIC_URL;
+  
+  // Strategy 1: Use public URL with HEAD requests (simpler, no credentials needed)
+  if (r2PublicUrl) {
+    const images = await fetchImagesFromR2PublicUrl(slug, r2PublicUrl);
+    if (images.length > 0) {
+      return images;
+    }
+  }
+
+  // Strategy 2: Use R2 API with credentials (more efficient for listing)
+  const images = await fetchImagesFromR2Api(slug);
+  return images;
 }
 
 // ---------- airtable fetch ----------
@@ -108,39 +222,48 @@ export async function fetchListings(): Promise<Listing[]> {
     };
   });
 
-  // 若你提供了"通过 folderId 列出图片"的端点，则顺序拉取图片列表
+  // Image resolution: Try R2 first, then fallback to Drive
   const listEndpoint = process.env.DRIVE_LIST_ENDPOINT;
-  if (!listEndpoint) {
-    // 没有端点：直接返回（前端可用 imageFolderUrl 做"查看相册"跳转）
-    return baseItems;
-  }
 
-  // 顺序拉取图片列表（缓存 1 小时）
   for (const item of baseItems) {
-    const folderId = parseDriveFolderId(item.imageFolderUrl);
-    if (!folderId) {
-      continue;
-    }
-    try {
-      const u = new URL(listEndpoint);
-      u.searchParams.set("folder", folderId);
-      const endpointUrl = u.toString();
-      // Cache image URLs for 1 hour (images don't change often)
-      const r = await fetch(endpointUrl, { 
-        next: { revalidate: 3600 } // Cache for 1 hour
-      });
-      if (r.ok) {
-        const data = await r.json();
-        // Handle both array response and error object response
-        if (Array.isArray(data) && data.length > 0) {
-          // Use direct URLs (no proxy needed)
-          item.images = data;
-          item.imageUrl = data[0];
-        }
-        // Silently ignore errors - images will fall back to placeholder
+    let imagesFound = false;
+
+    // Step 1: Try R2 bucket first (uses public URL or API credentials)
+    if (item.slug) {
+      const r2Images = await fetchImagesFromR2(item.slug);
+      if (r2Images.length > 0) {
+        item.images = r2Images;
+        item.imageUrl = r2Images[0];
+        imagesFound = true;
       }
-    } catch (error) {
-      // Silently ignore errors - images will fall back to placeholder
+    }
+
+    // Step 2: Fallback to Google Drive if R2 didn't have images
+    if (!imagesFound && listEndpoint) {
+      const folderId = parseDriveFolderId(item.imageFolderUrl);
+      if (folderId) {
+        try {
+          const u = new URL(listEndpoint);
+          u.searchParams.set("folder", folderId);
+          const endpointUrl = u.toString();
+          // Cache image URLs for 1 hour (images don't change often)
+          const r = await fetch(endpointUrl, { 
+            next: { revalidate: 3600 } // Cache for 1 hour
+          });
+          if (r.ok) {
+            const data = await r.json();
+            // Handle both array response and error object response
+            if (Array.isArray(data) && data.length > 0) {
+              // Use direct URLs (no proxy needed)
+              item.images = data;
+              item.imageUrl = data[0];
+              imagesFound = true;
+            }
+          }
+        } catch (error) {
+          // Silently ignore errors - images will fall back to placeholder
+        }
+      }
     }
   }
   

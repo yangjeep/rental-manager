@@ -23,7 +23,7 @@ export function renderFilters(listings: Listing[], filters: Record<string, strin
   const actionAttr = options.action ? ` action="${escapeAttribute(options.action)}"` : "";
   const resetHref = options.resetHref ?? "/";
   return `
-    <form method="get"${actionAttr}>
+    <form method="get" class="realtime-filters"${actionAttr}>
       <label>
         <span>City</span>
         <select name="city">${cityOptions}</select>
@@ -44,9 +44,30 @@ export function renderFilters(listings: Listing[], filters: Record<string, strin
         <span>Max rent</span>
         <input type="number" min="0" name="max" value="${escapeAttribute(filters.max || "")}" />
       </label>
-      <button class="button" type="submit">Apply</button>
       <a class="button ghost" href="${escapeAttribute(resetHref)}">Reset</a>
     </form>
+    <script>
+      (function() {
+        var form = document.querySelector('.realtime-filters');
+        if (!form) return;
+        var baseUrl = '${escapeAttribute(resetHref)}';
+        function updateFilters() {
+          var formData = new FormData(form);
+          var params = new URLSearchParams();
+          formData.forEach(function(value, key) {
+            if (value && value !== 'All' && value !== '0') {
+              params.set(key, value);
+            }
+          });
+          var queryString = params.toString();
+          var newUrl = baseUrl + (queryString ? '?' + queryString : '');
+          window.location.href = newUrl;
+        }
+        form.querySelectorAll('select, input').forEach(function(el) {
+          el.addEventListener('change', updateFilters);
+        });
+      })();
+    </script>
   `;
 }
 

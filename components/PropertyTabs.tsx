@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import ContactForm from "@/components/ContactForm";
 import ListingGallery from "@/components/ListingGallery";
 import TabbedLayout, { type Tab } from "@/components/TabbedLayout";
@@ -21,12 +22,37 @@ export default function PropertyTabs({ listing }: PropertyTabsProps) {
       label: "Overview",
       content: (
         <article className="space-y-6">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity mb-4"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Go back to Listings
+          </Link>
           <h1 className="text-3xl font-semibold">{listing.title}</h1>
           <ListingGallery images={gallery as string[]} alt={listing.title} />
           <div className="text-lg">
             {fmtPrice(listing.price)} / month · {listing.bedrooms} BR · {listing.city}
           </div>
           <div className="opacity-90 whitespace-pre-line">{listing.description}</div>
+          
+          {/* Map Section */}
+          {listing.address && (
+            <div className="space-y-3">
+              <h2 className="text-2xl font-semibold">Location</h2>
+              <p className="text-sm opacity-70">{listing.address}, {listing.city}</p>
+              <GoogleMap listing={listing} height="400px" />
+            </div>
+          )}
+          
           <button
             onClick={() => setActiveTab("apply")}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
@@ -34,16 +60,6 @@ export default function PropertyTabs({ listing }: PropertyTabsProps) {
             Apply Now
           </button>
         </article>
-      ),
-    },
-    {
-      id: "map",
-      label: "Map",
-      content: (
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">{listing.title}</h2>
-          <GoogleMap listing={listing} height="600px" />
-        </div>
       ),
     },
     {

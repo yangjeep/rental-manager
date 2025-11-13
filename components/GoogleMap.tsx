@@ -239,7 +239,12 @@ function MapWithMarkers({ properties, height, isLoaded, selectedListingId }: { p
           >
             {selectedMarker === index && (
               <InfoWindow onCloseClick={() => setSelectedMarker(null)}>
-                <div className="text-black p-2">
+                <div className="text-black">
+                  <img 
+                    src={(marker.listing.images && marker.listing.images[0]) || marker.listing.imageUrl || "/placeholder.jpg"}
+                    alt={marker.listing.title}
+                    className="w-full h-20 object-cover rounded mb-2"
+                  />
                   <h3 className="font-semibold text-sm mb-1">
                     <Link 
                       href={`/properties/${marker.listing.slug}`}

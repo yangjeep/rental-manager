@@ -104,8 +104,8 @@ try {
 } catch (error) {
   console.error('❌ Error generating baseline:', error.message);
   console.error('\nMake sure:');
-  console.error('  1. The Next.js server is running on http://localhost:3000');
-  console.error('  2. Run: npm run build && npm run start');
+  console.error('  1. The Cloudflare Pages dev server is running on http://localhost:3000');
+  console.error('  2. Run: npm run dev (wrangler pages dev) in another terminal');
   process.exit(1);
 }
 

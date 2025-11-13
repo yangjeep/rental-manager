@@ -1,18 +1,13 @@
-'use client';
-
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useCallback } from 'react';
-import type { Listing } from '@/lib/types';
+import { Form, useSearchParams } from "@remix-run/react";
+import type { Listing } from "~/lib/types";
 
 interface FilterControlsProps {
   listings: Listing[];
   resetHref?: string;
 }
 
-export function FilterControls({ listings, resetHref = '/' }: FilterControlsProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function FilterControls({ listings, resetHref = "/" }: FilterControlsProps) {
+  const [searchParams] = useSearchParams();
   
   const uniqueCities = Array.from(new Set(listings.map(listing => listing.city).filter(Boolean))).sort();
   const currentCity = searchParams.get('city') || '';
@@ -21,34 +16,15 @@ export function FilterControls({ listings, resetHref = '/' }: FilterControlsProp
   const currentMin = searchParams.get('min') || '';
   const currentMax = searchParams.get('max') || '';
 
-  const updateFilters = useCallback(() => {
-    const form = document.querySelector('.realtime-filters') as HTMLFormElement;
-    if (!form) return;
-    
-    const formData = new FormData(form);
-    const params = new URLSearchParams();
-    
-    formData.forEach((value, key) => {
-      const val = value.toString();
-      if (val && val !== 'All' && val !== '0') {
-        params.set(key, val);
-      }
-    });
-    
-    const queryString = params.toString();
-    const newUrl = resetHref + (queryString ? '?' + queryString : '');
-    router.push(newUrl);
-  }, [router, resetHref]);
-
   return (
     <section className="filters">
-      <form method="get" className="realtime-filters grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4 p-6 rounded-2xl bg-card/85 border border-white/6 backdrop-blur-xl">
+      <Form method="get" className="realtime-filters grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4 p-6 rounded-2xl bg-card/85 border border-white/6 backdrop-blur-xl">
         <label className="flex flex-col gap-1.5 text-sm text-muted">
           <span>City</span>
           <select
             name="city"
-            value={currentCity}
-            onChange={updateFilters}
+            defaultValue={currentCity}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="bg-bg border border-white/12 text-fg rounded-xl px-3 py-2"
           >
             <option value="All">All cities</option>
@@ -62,8 +38,8 @@ export function FilterControls({ listings, resetHref = '/' }: FilterControlsProp
           <span>Bedrooms</span>
           <select
             name="bedrooms"
-            value={currentBedrooms}
-            onChange={updateFilters}
+            defaultValue={currentBedrooms}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="bg-bg border border-white/12 text-fg rounded-xl px-3 py-2"
           >
             {[0, 1, 2, 3, 4].map(num => (
@@ -76,8 +52,8 @@ export function FilterControls({ listings, resetHref = '/' }: FilterControlsProp
           <span>Status</span>
           <select
             name="status"
-            value={currentStatus}
-            onChange={updateFilters}
+            defaultValue={currentStatus}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="bg-bg border border-white/12 text-fg rounded-xl px-3 py-2"
           >
             <option value="">All</option>
@@ -93,8 +69,8 @@ export function FilterControls({ listings, resetHref = '/' }: FilterControlsProp
             type="number"
             min="0"
             name="min"
-            value={currentMin}
-            onChange={updateFilters}
+            defaultValue={currentMin}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="bg-bg border border-white/12 text-fg rounded-xl px-3 py-2"
           />
         </label>
@@ -105,20 +81,19 @@ export function FilterControls({ listings, resetHref = '/' }: FilterControlsProp
             type="number"
             min="0"
             name="max"
-            value={currentMax}
-            onChange={updateFilters}
+            defaultValue={currentMax}
+            onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="bg-bg border border-white/12 text-fg rounded-xl px-3 py-2"
           />
         </label>
         
-        <Link
+        <a
           href={resetHref}
           className="self-end rounded-full px-5 py-2.5 bg-transparent border border-white/25 text-fg font-semibold text-center no-underline hover:bg-white/10"
         >
           Reset
-        </Link>
-      </form>
+        </a>
+      </Form>
     </section>
   );
 }
-

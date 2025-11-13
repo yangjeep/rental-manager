@@ -1,7 +1,6 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import type { Listing } from '@/lib/types';
-import { formatPrice } from '@/lib/pages/shared';
+import { Link } from "@remix-run/react";
+import type { Listing } from "~/lib/types";
+import { formatPrice } from "~/lib/pages/shared";
 
 interface ListingCardProps {
   listing: Listing;
@@ -13,8 +12,8 @@ export function ListingCard({ listing }: ListingCardProps) {
 
   return (
     <article className="bg-card/90 border border-white/8 rounded-2xl overflow-hidden transition-transform hover:-translate-y-1 hover:border-accent/60">
-      <Link href={`/properties/${encodeURIComponent(listing.slug)}`} className="flex flex-col gap-4 p-4 pb-6 text-inherit no-underline">
-        <Image
+      <Link to={`/properties/${encodeURIComponent(listing.slug)}`} className="flex flex-col gap-4 p-4 pb-6 text-inherit no-underline">
+        <img
           src={cover}
           alt={`${listing.title} cover`}
           width={400}
@@ -43,4 +42,3 @@ export function ListingCard({ listing }: ListingCardProps) {
     </article>
   );
 }
-

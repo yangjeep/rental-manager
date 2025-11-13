@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect, useRef } from 'react';
-import type { Listing } from '@/lib/types';
+import type { Listing } from '~/lib/types';
 
 interface MapViewProps {
   listings: Listing[];

@@ -1,8 +1,12 @@
 name = "rental-manager"
 compatibility_date = "2024-12-18"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
 
-# Note: Build command must be set in Cloudflare Pages dashboard:
-# Settings > Builds & deployments > Build command: npx @cloudflare/next-on-pages
-# Environment variables should be set in the Pages dashboard under Settings > Environment Variables
+# Remix builds to /build
+# Cloudflare Pages needs the /build/client directory
+pages_build_output_dir = "build/client"
+
+# Environment variables - set these in Cloudflare dashboard
+# [vars]
+# AIRTABLE_TOKEN = "" # Set as secret in dashboard
+# AIRTABLE_BASE_ID = ""

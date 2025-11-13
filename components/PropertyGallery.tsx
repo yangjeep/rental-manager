@@ -1,8 +1,5 @@
-'use client';
-
 import { useState } from 'react';
-import Image from 'next/image';
-import type { Listing } from '@/lib/types';
+import type { Listing } from '~/lib/types';
 
 interface PropertyGalleryProps {
   listing: Listing;
@@ -18,7 +15,7 @@ export function PropertyGallery({ listing }: PropertyGalleryProps) {
   if (images.length === 1) {
     return (
       <div className="my-6">
-        <Image
+        <img
           src={images[0]}
           alt={`${listing.title} photo`}
           width={1200}
@@ -33,7 +30,7 @@ export function PropertyGallery({ listing }: PropertyGalleryProps) {
   return (
     <div className="flex flex-col gap-4 my-6">
       <div className="w-full rounded-2xl overflow-hidden bg-card/85 border border-white/8">
-        <Image
+        <img
           src={selectedImage}
           alt={`${listing.title} photo`}
           width={1200}
@@ -54,7 +51,7 @@ export function PropertyGallery({ listing }: PropertyGalleryProps) {
             }`}
             aria-label={`View image ${idx + 1} of ${images.length}`}
           >
-            <Image
+            <img
               src={img}
               alt={`${listing.title} photo ${idx + 1}`}
               width={80}
@@ -68,4 +65,3 @@ export function PropertyGallery({ listing }: PropertyGalleryProps) {
     </div>
   );
 }
-

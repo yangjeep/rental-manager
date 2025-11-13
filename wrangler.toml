@@ -1,7 +1,7 @@
 name = "rental-manager"
 compatibility_date = "2024-12-18"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+main = ".open-next/worker.js"
 
 # Note: Build command must be set in Cloudflare Pages dashboard:
 # Settings > Builds & deployments > Build command: npm run pages:build

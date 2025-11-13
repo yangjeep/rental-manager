@@ -18,6 +18,7 @@ function applyFilters(list: Listing[], q: Record<string, string>) {
     const min = q?.min ? Number(l.price) >= Number(q.min) : true;
     const max = q?.max ? Number(l.price) <= Number(q.max) : true;
     const status = q?.status ? l.status === q.status : l.status !== "Rented";
-    return cityFilter && okBed && min && max && status;
+    const pet = q?.pet ? l.pets === q.pet : true;
+    return cityFilter && okBed && min && max && status && pet;
   });
 }

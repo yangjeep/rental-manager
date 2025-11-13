@@ -9,14 +9,28 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: '**.r2.dev',
+        pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'pub-*.r2.dev',
+        hostname: '**.r2.cloudflarestorage.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'image-demo.rent-in-ottawa.ca',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.rent-in-ottawa.ca',
+        pathname: '/**',
       },
     ],
     // Cache images for 30 days (2592000 seconds)
     minimumCacheTTL: 2592000,
+    // Disable image optimization for external URLs to prevent flickering
+    unoptimized: false,
   },
   async headers() {
     const headers = []

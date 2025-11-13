@@ -10,6 +10,7 @@ type ListingCardProps = {
 
 export default function ListingCard({ listing, onClick, isSelected = false }: ListingCardProps) {
   const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder1.jpg";
+  const isLocalImage = imageSrc?.startsWith('/');
   
   return (
     <Link 
@@ -24,9 +25,10 @@ export default function ListingCard({ listing, onClick, isSelected = false }: Li
         width={400}
         height={128}
         className="h-32 w-full object-cover"
-        unoptimized={imageSrc.startsWith('http')}
+        unoptimized={isLocalImage}
         onError={(e) => {
           // Fallback to placeholder if image fails to load
+          console.error(`Failed to load image: ${imageSrc}`);
           if ((e.target as HTMLImageElement).src !== "/placeholder1.jpg") {
             (e.target as HTMLImageElement).src = "/placeholder1.jpg";
           }

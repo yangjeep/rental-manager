@@ -7,7 +7,7 @@ type R2Bucket = {
 interface Env {
   AIRTABLE_TOKEN: string;
   AIRTABLE_BASE_ID: string;
-  AIRTABLE_TABLE_NAME?: string;
+  AIRTABLE_INVENTORY_TABLE_NAME?: string;
   AIRTABLE_IMAGE_FOLDER_FIELD?: string;
   AIRTABLE_R2_IMAGE_FIELD?: string;
   DRIVE_LIST_ENDPOINT?: string;
@@ -40,7 +40,7 @@ export default {
       return json({ error: 'recordId is required' }, 400);
     }
 
-    const table = env.AIRTABLE_TABLE_NAME || 'Properties';
+    const table = env.AIRTABLE_INVENTORY_TABLE_NAME || 'Properties';
     const folderField = env.AIRTABLE_IMAGE_FOLDER_FIELD || 'Image Folder URL';
     const r2Field = env.AIRTABLE_R2_IMAGE_FIELD || 'R2 Images';
 

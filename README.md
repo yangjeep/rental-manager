@@ -52,7 +52,7 @@ type-safe during CI even though Pages is responsible for the actual bundling ste
 
 ## Datasource (Airtable)
 
-Table name: `Properties` (configurable via `AIRTABLE_TABLE_NAME`).
+Table name: `Properties` (configurable via `AIRTABLE_INVENTORY_TABLE_NAME`).
 
 ### Required Fields
 
@@ -105,7 +105,7 @@ all media while letting Drive act as an optional source of truth.
 ```
 AIRTABLE_TOKEN                # required Airtable API token
 AIRTABLE_BASE_ID              # required base ID
-AIRTABLE_TABLE_NAME           # defaults to "Properties"
+AIRTABLE_INVENTORY_TABLE_NAME  # defaults to "Properties"
 AIRTABLE_R2_IMAGE_FIELD       # defaults to "R2 Images"
 R2_PUBLIC_BASE_URL            # used by workers/r2-sync when writing back to Airtable
 DEMO_USER / DEMO_PASS         # enable Basic Auth for previews

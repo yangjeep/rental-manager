@@ -30,7 +30,7 @@ type AirtableRecord = { id: string; fields: Record<string, any> };
 export async function fetchListings(env: EnvSource = {}): Promise<Listing[]> {
   const token = readEnv(env, "AIRTABLE_TOKEN");
   const baseId = readEnv(env, "AIRTABLE_BASE_ID");
-  const table = readEnv(env, "AIRTABLE_TABLE_NAME") || "Properties";
+  const table = readEnv(env, "AIRTABLE_INVENTORY_TABLE_NAME") || "Properties";
   const r2Field = readEnv(env, "AIRTABLE_R2_IMAGE_FIELD") || "R2 Images";
   const isCI = envFlag(env, "CI");
   const isProduction = readEnv(env, "NODE_ENV") === "production";

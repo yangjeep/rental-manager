@@ -25,12 +25,12 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
           </Suspense>
           {/* Combined Map and Listings Layout */}
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Map Section - 60% on desktop */}
-            <div className="w-full lg:w-[60%]">
+            {/* Map Section - 70% on desktop */}
+            <div className="w-full lg:w-[70%]">
               <GoogleMap listings={filteredListings} height="600px" />
             </div>
-            {/* Listings Section - 40% on desktop */}
-            <div className="w-full lg:w-[40%]">
+            {/* Listings Section - 30% on desktop */}
+            <div className="w-full lg:w-[30%]">
               <div className="flex flex-col gap-6">
                 {filteredListings.map((l: Listing) => (
                   <ListingCard key={l.id} listing={l} />

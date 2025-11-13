@@ -48,5 +48,5 @@ On mobile: stacks vertically (map on top, listings below)
 ### To-dos
 
 - [x] Modify HomeTabs.tsx to combine Residential Listings and Map tabs into one unified view with proper layout
-- [ ] Update the listing cards grid to single column layout for the narrower 40% space
-- [ ] Verify the layout works correctly on desktop and mobile viewports
+- [x] Update the listing cards grid to single column layout for the narrower 40% space
+- [x] Verify the layout works correctly on desktop and mobile viewports

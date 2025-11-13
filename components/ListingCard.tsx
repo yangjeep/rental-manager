@@ -6,22 +6,27 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   
   return (
     <Link href={`/properties/${listing.slug}`} className="card overflow-hidden hover:border-white/30">
-      <img 
-        src={imageSrc}
-        alt={listing.title} 
-        className="h-32 w-full object-cover"
-        onError={(e) => {
-          // Fallback to placeholder if image fails to load
-          if ((e.target as HTMLImageElement).src !== "/placeholder.jpg") {
-            (e.target as HTMLImageElement).src = "/placeholder.jpg";
-          }
-        }}
-      />
-      <div className="p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{listing.title}</h3>
-          <span className="text-xs rounded-full border px-2 py-0.5 opacity-80">{listing.status}</span>
+      <div className="relative">
+        <img 
+          src={imageSrc}
+          alt={listing.title} 
+          className="h-32 w-full object-cover"
+          onError={(e) => {
+            // Fallback to placeholder if image fails to load
+            if ((e.target as HTMLImageElement).src !== "/placeholder.jpg") {
+              (e.target as HTMLImageElement).src = "/placeholder.jpg";
+            }
+          }}
+        />
+        {/* Overlay Title and Status Badge */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-between p-3">
+          <div className="flex justify-end">
+            <span className="text-xs rounded-full bg-white/90 text-black px-2 py-1 font-medium">{listing.status}</span>
+          </div>
+          <h3 className="text-lg font-semibold text-white drop-shadow-lg">{listing.title}</h3>
         </div>
+      </div>
+      <div className="p-4 space-y-2">
         <div className="opacity-80">${listing.price} / mo · {listing.bedrooms} BR · {listing.city}</div>
         <div className="flex gap-2 text-xs opacity-80">
           <Badge label={fmtParkingShort(listing.parking)} />

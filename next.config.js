@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // OpenNext Cloudflare adapter (@opennextjs/cloudflare) will handle the build
-  // No output: 'export' needed - OpenNext handles runtime configuration
+  // Cloudflare Pages adapter (@cloudflare/next-on-pages) will handle the build
+  // No output: 'export' needed - the adapter handles edge runtime
   images: {
     unoptimized: true, // Cloudflare Pages handles image optimization
     remotePatterns: [

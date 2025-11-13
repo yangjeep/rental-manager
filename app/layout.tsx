@@ -8,6 +8,9 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 export const metadata: Metadata = {
   title: 'Rentals Demo',
   description: 'Demo rental listings site (Next.js + Google Sheets)',
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

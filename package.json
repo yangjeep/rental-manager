@@ -13,10 +13,10 @@
     "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js"
   },
   "devDependencies": {
-    "@lhci/cli": "^0.12.0",
+    "@lhci/cli": "^0.15.1",
     "@types/node": "24.10.1",
     "lighthouse": "^13.0.1",
     "typescript": "5.4.5",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.47.0"
   }
 }

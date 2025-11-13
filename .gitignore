@@ -9,8 +9,6 @@
 /coverage
 
 # build artifacts
-/.next/
-/out/
 /build
 .vercel
 .cloudflare

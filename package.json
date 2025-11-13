@@ -12,6 +12,9 @@
     "lighthouse:local": "lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --view",
     "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js"
   },
+  "overrides": {
+    "tmp": ">=0.2.4"
+  },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
     "@vercel/analytics": "^1.5.0",

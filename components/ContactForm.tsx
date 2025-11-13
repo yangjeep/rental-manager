@@ -86,7 +86,7 @@ export default function ContactForm({ listingTitle }: { listingTitle: string }) 
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email) || formData.email.length > 320) {
       newErrors.email = "Invalid email format";
     }
 

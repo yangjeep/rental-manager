@@ -2,8 +2,8 @@
 import { useState } from "react";
 
 export default function ListingGallery({ images = [] as string[], alt = "" }) {
-  // 如果没有图片，显示 placeholder
-  const displayImages = images && images.length > 0 ? images : ["/placeholder.jpg"];
+  // 如果没有图片，显示 placeholders for demo
+  const displayImages = images && images.length > 0 ? images : ["/placeholder1.jpg", "/placeholder2.jpg"];
 
   const [idx, setIdx] = useState(0);
 
@@ -16,8 +16,8 @@ export default function ListingGallery({ images = [] as string[], alt = "" }) {
           className="w-full rounded-2xl border border-white/10 object-cover max-h-[520px]"
           onError={(e) => {
             // Fallback to placeholder if image fails to load
-            if (displayImages[idx] !== "/placeholder.jpg") {
-              (e.target as HTMLImageElement).src = "/placeholder.jpg";
+            if (displayImages[idx] !== "/placeholder1.jpg" && displayImages[idx] !== "/placeholder2.jpg") {
+              (e.target as HTMLImageElement).src = "/placeholder1.jpg";
             }
           }}
         />

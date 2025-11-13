@@ -13,7 +13,7 @@ type PropertyTabsProps = {
 
 export default function PropertyTabs({ listing }: PropertyTabsProps) {
   const [activeTab, setActiveTab] = useState("overview");
-  const gallery = listing.images && listing.images.length ? listing.images : [listing.imageUrl || "/placeholder.jpg"];
+  const gallery = listing.images && listing.images.length ? listing.images : [listing.imageUrl || "/placeholder1.jpg", "/placeholder2.jpg"];
 
   const tabs: Tab[] = [
     {

@@ -103,7 +103,7 @@ export async function fetchListings(): Promise<Listing[]> {
       pets,
       description,
       imageFolderUrl,
-      imageUrl: "/placeholder.jpg", // 默认使用 placeholder
+      imageUrl: "/placeholder1.jpg", // 默认使用 placeholder
       images: undefined,   // 若配置了 DRIVE_LIST_ENDPOINT，会去拉取
     };
   });
@@ -133,9 +133,9 @@ export async function fetchListings(): Promise<Listing[]> {
         const data = await r.json();
         // Handle both array response and error object response
         if (Array.isArray(data) && data.length > 0) {
-          // Proxy images through Next.js API route to avoid CORS/issues
-          item.images = data.map(url => `/api/image?url=${encodeURIComponent(url)}`);
-          item.imageUrl = `/api/image?url=${encodeURIComponent(data[0])}`;
+          // Use direct URLs (no proxy needed)
+          item.images = data;
+          item.imageUrl = data[0];
         }
         // Silently ignore errors - images will fall back to placeholder
       }
@@ -144,10 +144,16 @@ export async function fetchListings(): Promise<Listing[]> {
     }
   }
   
-  // 确保所有 items 都有 imageUrl，如果没有则使用 placeholder
-  for (const item of baseItems) {
+  // 确保所有 items 都有 imageUrl 和 demo images，如果没有则使用 placeholders
+  for (let i = 0; i < baseItems.length; i++) {
+    const item = baseItems[i];
     if (!item.imageUrl || item.imageUrl.trim() === "") {
-      item.imageUrl = "/placeholder.jpg";
+      // Alternate between placeholder images for demo purposes
+      item.imageUrl = i % 2 === 0 ? "/placeholder1.jpg" : "/placeholder2.jpg";
+    }
+    // If no images array, provide both placeholders for gallery demo
+    if (!item.images || item.images.length === 0) {
+      item.images = ["/placeholder1.jpg", "/placeholder2.jpg"];
     }
   }
 

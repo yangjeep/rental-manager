@@ -75,10 +75,6 @@ The application includes several API routes that handle sensitive data:
    - Should use proper caching headers
    - Consider implementing rate limiting
 
-3. **Image Proxy API** (`/api/image`)
-   - Validates image URLs
-   - Implements security checks for remote resources
-
 ### Deployment Security Best Practices
 
 When deploying this application:

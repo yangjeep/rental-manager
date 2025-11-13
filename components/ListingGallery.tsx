@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 
 export default function ListingGallery({ images = [] as string[], alt = "" }) {
   // 如果没有图片，显示 placeholders for demo
@@ -10,10 +11,14 @@ export default function ListingGallery({ images = [] as string[], alt = "" }) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <img
+        <Image
           src={displayImages[idx]}
           alt={alt}
+          width={1200}
+          height={520}
           className="w-full rounded-2xl border border-white/10 object-cover max-h-[520px]"
+          unoptimized={displayImages[idx].startsWith('http')}
+          priority={idx === 0}
           onError={(e) => {
             // Fallback to placeholder if image fails to load
             if (displayImages[idx] !== "/placeholder1.jpg" && displayImages[idx] !== "/placeholder2.jpg") {
@@ -54,7 +59,14 @@ export default function ListingGallery({ images = [] as string[], alt = "" }) {
             onClick={() => setIdx(i)}
             aria-label={`image ${i+1}`}
           >
-            <img src={src} alt={`${alt} ${i+1}`} className="h-16 w-full object-cover" />
+            <Image 
+              src={src} 
+              alt={`${alt} ${i+1}`} 
+              width={100}
+              height={64}
+              className="h-16 w-full object-cover"
+              unoptimized={src.startsWith('http')}
+            />
           </button>
         ))}
         </div>

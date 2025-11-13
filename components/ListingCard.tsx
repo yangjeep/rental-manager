@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Listing } from "@/lib/types";
 
 type ListingCardProps = {
@@ -17,10 +18,13 @@ export default function ListingCard({ listing, onClick, isSelected = false }: Li
       onClick={onClick}
     >
       <div className="relative">
-      <img 
+      <Image 
         src={imageSrc}
         alt={listing.title} 
-          className="h-32 w-full object-cover"
+        width={400}
+        height={128}
+        className="h-32 w-full object-cover"
+        unoptimized={imageSrc.startsWith('http')}
         onError={(e) => {
           // Fallback to placeholder if image fails to load
           if ((e.target as HTMLImageElement).src !== "/placeholder1.jpg") {

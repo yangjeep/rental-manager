@@ -49,8 +49,14 @@ async function fetchImagesFromR2Api(slug: string): Promise<string[]> {
   console.log(`[R2 API] Bucket Name: ${bucketName}`);
   console.log(`[R2 API] Public URL: ${publicUrl || '❌ Not set'}`);
 
-  if (!accountId || !accessKeyId || !secretAccessKey || !publicUrl) {
-    console.log(`[R2 API] ⚠️ Missing credentials, skipping API method`);
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    console.log(`[R2 API] ⚠️ Missing S3 credentials (account ID, access key, secret key)`);
+    return [];
+  }
+
+  if (!publicUrl) {
+    console.log(`[R2 API] ⚠️ Missing R2_PUBLIC_URL - cannot construct image URLs`);
+    console.log(`[R2 API] Note: R2_PUBLIC_URL is required to generate accessible image URLs`);
     return [];
   }
 
@@ -93,7 +99,11 @@ async function fetchImagesFromR2Api(slug: string): Promise<string[]> {
         const keyB = (b.Key || '').toLowerCase();
         return keyA.localeCompare(keyB, undefined, { numeric: true, sensitivity: 'base' });
       })
-      .map(obj => `${publicUrl}/${obj.Key}`);
+      .map(obj => {
+        const fullUrl = `${publicUrl}/${obj.Key}`;
+        console.log(`[R2 API] 🔗 Constructing URL: ${obj.Key} -> ${fullUrl}`);
+        return fullUrl;
+      });
 
     console.log(`[R2 API] ✅ Images after filtering and sorting (alphanumeric):`);
     images.forEach((img, idx) => console.log(`  ${idx + 1}. ${img}`));
@@ -110,11 +120,11 @@ async function fetchImagesFromR2Api(slug: string): Promise<string[]> {
 }
 
 /**
- * Fetch images from R2 - lists all images in folder and sorts alphanumerically
+ * Fetch images from R2 - uses S3 API to list all images in folder and sorts alphanumerically
  */
 async function fetchImagesFromR2(slug: string): Promise<string[]> {
   console.log(`\n=== [R2] Fetching images for property: ${slug} ===`);
-  console.log(`[R2] Using API to list all images in folder, sorted alphanumerically`);
+  console.log(`[R2] Using S3 API to list all images in folder, sorted alphanumerically`);
   
   const images = await fetchImagesFromR2Api(slug);
   

@@ -3,7 +3,6 @@ compatibility_date = "2024-12-18"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
-[build]
-command = "npm run pages:build"
-
-# Note: For Cloudflare Pages, environment variables should be set in the Pages dashboard under Settings > Environment Variables
+# Note: Build command must be set in Cloudflare Pages dashboard:
+# Settings > Builds & deployments > Build command: npm run pages:build
+# Environment variables should be set in the Pages dashboard under Settings > Environment Variables

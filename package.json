@@ -12,7 +12,7 @@
     "lighthouse": "lhci autorun",
     "lighthouse:local": "lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --view",
     "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js",
-    "pages:build": "node scripts/patch-adapter.js && npx @cloudflare/next-on-pages",
+    "pages:build": "node -e \"const fs=require('fs'),p='node_modules/@cloudflare/next-on-pages/dist/index.js';if(fs.existsSync(p)){const c=fs.readFileSync(p,'utf8');fs.writeFileSync(p,c.replace(/platform: \\\"neutral\\\"/g,'platform: \\\"node\\\"'));console.log('✅ Patched adapter')}\" && npx @cloudflare/next-on-pages",
     "pages:deploy": "npm run pages:build && wrangler pages deploy .vercel/output/static"
   },
   "dependencies": {

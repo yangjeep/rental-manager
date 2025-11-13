@@ -8,22 +8,6 @@ interface MapViewProps {
   googleMapsApiKey?: string;
 }
 
-// Google Maps types
-declare global {
-  interface Window {
-    google?: {
-      maps: {
-        Map: new (element: HTMLElement, options?: any) => any;
-        Geocoder: new () => any;
-        LatLngBounds: new () => any;
-        Marker: new (options?: any) => any;
-        InfoWindow: new (options?: any) => any;
-      };
-    };
-    initMap?: () => void;
-  }
-}
-
 export function MapView({ listings, googleMapsApiKey }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -48,8 +32,11 @@ export function MapView({ listings, googleMapsApiKey }: MapViewProps) {
 
     function initializeMap() {
       if (!mapRef.current || !window.google || !window.google.maps) return;
+      
+      const google = window.google;
+      const maps = google.maps;
 
-      const map = new window.google.maps.Map(mapRef.current, {
+      const map = new maps.Map(mapRef.current, {
         zoom: 4,
         center: { lat: 39.5, lng: -98.35 },
         mapTypeControl: true,
@@ -57,8 +44,8 @@ export function MapView({ listings, googleMapsApiKey }: MapViewProps) {
       });
 
       mapInstanceRef.current = map;
-      const geocoder = new window.google.maps.Geocoder();
-      const bounds = new window.google.maps.LatLngBounds();
+      const geocoder = new maps.Geocoder();
+      const bounds = new maps.LatLngBounds();
       const markers: any[] = [];
       const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
@@ -74,7 +61,7 @@ export function MapView({ listings, googleMapsApiKey }: MapViewProps) {
       function createMarker(listing: Listing) {
         const query = listing.address ? `${listing.address}, ${listing.city}` : listing.city || listing.title;
         
-        geocoder.geocode({ address: query }, (results, status) => {
+        geocoder.geocode({ address: query }, (results: any, status: string) => {
           if (status === "OK" && results && results[0]) {
             const location = results[0].geometry.location;
             const popupContent = [
@@ -87,13 +74,13 @@ export function MapView({ listings, googleMapsApiKey }: MapViewProps) {
             popupContent.push("<a href='/properties/" + encodeURIComponent(listing.slug) + "' style='color: #0066cc; text-decoration: underline;'>View listing</a>");
             popupContent.push("</div>");
 
-            const marker = new window.google.maps.Marker({
+            const marker = new maps.Marker({
               position: location,
               map: map,
               title: listing.title,
             });
 
-            const infoWindow = new window.google.maps.InfoWindow({
+            const infoWindow = new maps.InfoWindow({
               content: popupContent.join(""),
             });
 

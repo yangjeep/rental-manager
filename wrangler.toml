@@ -4,3 +4,7 @@ pages_build_output_dir = "public"
 
 [build]
 command = "npm run build"
+
+# Load environment variables from .env.local
+[env.development]
+# Wrangler automatically loads .env and .env.local for Pages dev

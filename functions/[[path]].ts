@@ -1,7 +1,15 @@
 import { requireBasicAuth } from "../lib/auth";
-import { envFlag } from "../lib/env";
+import { envFlag, readEnv } from "../lib/env";
 import { fetchListings } from "../lib/fetchListings";
-import { renderHomePage, renderNotFound, renderPropertyPage, renderSitemap } from "../lib/templates";
+import {
+  renderAboutPage,
+  renderApplicationPage,
+  renderHomePage,
+  renderMapPage,
+  renderNotFound,
+  renderPropertyPage,
+  renderSitemap,
+} from "../lib/pages";
 import type { Listing } from "../lib/types";
 
 const HTML_HEADERS = {
@@ -21,6 +29,11 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
     return authResponse;
   }
 
+  // Pass through static files to Cloudflare Pages static file serving
+  if (isStaticFile(pathname)) {
+    return await context.next();
+  }
+
   if (pathname === "/sitemap.xml") {
     const listings = await fetchListings(context.env);
     const xml = renderSitemap(listings, `${url.protocol}//${url.host}`);
@@ -33,15 +46,39 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
   }
 
   const listings = await fetchListings(context.env);
+  const filters = Object.fromEntries(url.searchParams.entries());
 
   if (pathname === "/") {
     const filtered = applyFilters(listings, url.searchParams);
     const body = renderHomePage({
       filteredListings: filtered,
       allListings: listings,
-      filters: Object.fromEntries(url.searchParams.entries()),
+      filters,
+      activePath: "/",
     });
     return htmlResponse(body, 200, noIndex, { "cache-control": "public, max-age=60" });
+  }
+
+  if (pathname === "/map") {
+    const filtered = applyFilters(listings, url.searchParams);
+    const body = renderMapPage({
+      filteredListings: filtered,
+      allListings: listings,
+      filters,
+      googleMapsApiKey: readEnv(context.env, "GOOGLE_MAPS_API_KEY"),
+      activePath: "/map",
+    });
+    return htmlResponse(body, 200, noIndex, { "cache-control": "public, max-age=120" });
+  }
+
+  if (pathname === "/apply") {
+    const body = renderApplicationPage({ activePath: "/apply" });
+    return htmlResponse(body, 200, noIndex, { "cache-control": "public, max-age=300" });
+  }
+
+  if (pathname === "/about") {
+    const body = renderAboutPage({ activePath: "/about" });
+    return htmlResponse(body, 200, noIndex, { "cache-control": "public, max-age=300" });
   }
 
   if (pathname.startsWith("/properties/")) {
@@ -50,7 +87,7 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
     if (!listing) {
       return htmlResponse(renderNotFound(`Property “${slug}” not found.`), 404, noIndex);
     }
-    const body = renderPropertyPage(listing);
+    const body = renderPropertyPage({ listing });
     return htmlResponse(body, 200, noIndex, { "cache-control": "public, max-age=120" });
   }
 
@@ -60,6 +97,29 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
 function normalizePath(pathname: string): string {
   if (pathname === "/") return "/";
   return pathname.replace(/\/$/, "");
+}
+
+function isStaticFile(pathname: string): boolean {
+  const staticExtensions = [
+    ".css",
+    ".js",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".txt",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
+    ".json",
+    ".pdf",
+  ];
+  return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
 }
 
 function applyFilters(listings: Listing[], params: URLSearchParams): Listing[] {

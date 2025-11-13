@@ -1,7 +1,6 @@
 // lib/fetchListings.airtable.ts
 import type { EnvSource } from "./env";
 import { envFlag, readEnv } from "./env";
-import { parseDriveFolderId } from "./drive";
 import type { Listing } from "./types";
 
 // ---------- helpers ----------
@@ -31,8 +30,7 @@ type AirtableRecord = { id: string; fields: Record<string, any> };
 export async function fetchListings(env: EnvSource = {}): Promise<Listing[]> {
   const token = readEnv(env, "AIRTABLE_TOKEN");
   const baseId = readEnv(env, "AIRTABLE_BASE_ID");
-  const table = readEnv(env, "AIRTABLE_TABLE_NAME") || "Properties";
-  const folderField = readEnv(env, "AIRTABLE_IMAGE_FOLDER_FIELD") || "Image Folder URL";
+  const table = readEnv(env, "AIRTABLE_INVENTORY_TABLE_NAME") || "Properties";
   const r2Field = readEnv(env, "AIRTABLE_R2_IMAGE_FIELD") || "R2 Images";
   const isCI = envFlag(env, "CI");
   const isProduction = readEnv(env, "NODE_ENV") === "production";
@@ -84,10 +82,12 @@ export async function fetchListings(env: EnvSource = {}): Promise<Listing[]> {
     const rawParking = fields["Parking"];
     const parking = rawParking != null ? String(rawParking).trim() : undefined;
 
-    // 封面：如果你以后加了 Attachments 字段，这里可优先取附件的第一张
-    const rawFolder = fields[folderField];
-    const imageFolderUrl: string | undefined = rawFolder != null ? String(rawFolder) : undefined;
+    // R2 attachment field provides the cover image and gallery
     const r2Images = extractAttachmentUrls(fields[r2Field]);
+    const fallbackImages = ["/placeholder.jpg", "/placeholder2.jpg"];
+    // Use R2 images if available, otherwise use fallbacks
+    // If only 1 R2 image, use it alone (no placeholders)
+    const images = r2Images && r2Images.length > 0 ? r2Images : fallbackImages;
 
     return {
       id: fields["ID"] ? String(fields["ID"]) : slug || crypto.randomUUID(),
@@ -102,55 +102,10 @@ export async function fetchListings(env: EnvSource = {}): Promise<Listing[]> {
       parking,
       pets,
       description,
-      imageFolderUrl,
-      imageUrl: r2Images?.[0] || "/placeholder.jpg",
-      images: r2Images,
+      imageUrl: images[0],
+      images: images,
     };
   });
-
-  // 若你提供了"通过 folderId 列出图片"的端点，则顺序拉取图片列表
-  const listEndpoint = readEnv(env, "DRIVE_LIST_ENDPOINT");
-  if (!listEndpoint) {
-    // 没有端点：直接返回（前端可用 imageFolderUrl 做"查看相册"跳转）
-    return baseItems;
-  }
-
-  // 顺序拉取图片列表（缓存 1 小时）
-  for (const item of baseItems) {
-    if (item.images && item.images.length > 0) {
-      continue;
-    }
-    const folderId = parseDriveFolderId(item.imageFolderUrl);
-    if (!folderId) {
-      continue;
-    }
-    try {
-      const u = new URL(listEndpoint);
-      u.searchParams.set("folder", folderId);
-      const endpointUrl = u.toString();
-      // Cache image URLs for 1 hour (images don't change often)
-      const r = await fetch(endpointUrl);
-      if (r.ok) {
-        const data = await r.json();
-        // Handle both array response and error object response
-        if (Array.isArray(data) && data.length > 0) {
-          // Proxy images through Next.js API route to avoid CORS/issues
-          item.images = data.map(url => `/api/image?url=${encodeURIComponent(url)}`);
-          item.imageUrl = `/api/image?url=${encodeURIComponent(data[0])}`;
-        }
-        // Silently ignore errors - images will fall back to placeholder
-      }
-    } catch (error) {
-      // Silently ignore errors - images will fall back to placeholder
-    }
-  }
-  
-  // 确保所有 items 都有 imageUrl，如果没有则使用 placeholder
-  for (const item of baseItems) {
-    if (!item.imageUrl || item.imageUrl.trim() === "") {
-      item.imageUrl = "/placeholder.jpg";
-    }
-  }
 
   return baseItems;
 }

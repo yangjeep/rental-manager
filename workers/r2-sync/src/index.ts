@@ -1,5 +1,3 @@
-import { parseDriveFolderId } from '../../../lib/drive';
-
 type AirtableRecord = { id: string; fields: Record<string, any> };
 type UploadedAsset = { url: string; filename: string };
 type R2Bucket = {
@@ -9,7 +7,7 @@ type R2Bucket = {
 interface Env {
   AIRTABLE_TOKEN: string;
   AIRTABLE_BASE_ID: string;
-  AIRTABLE_TABLE_NAME?: string;
+  AIRTABLE_INVENTORY_TABLE_NAME?: string;
   AIRTABLE_IMAGE_FOLDER_FIELD?: string;
   AIRTABLE_R2_IMAGE_FIELD?: string;
   DRIVE_LIST_ENDPOINT?: string;
@@ -42,7 +40,7 @@ export default {
       return json({ error: 'recordId is required' }, 400);
     }
 
-    const table = env.AIRTABLE_TABLE_NAME || 'Properties';
+    const table = env.AIRTABLE_INVENTORY_TABLE_NAME || 'Properties';
     const folderField = env.AIRTABLE_IMAGE_FOLDER_FIELD || 'Image Folder URL';
     const r2Field = env.AIRTABLE_R2_IMAGE_FIELD || 'R2 Images';
 
@@ -176,4 +174,17 @@ function extensionFromContentType(type: string): string {
   if (type.includes('webp')) return '.webp';
   if (type.includes('gif')) return '.gif';
   return '.bin';
+}
+
+function parseDriveFolderId(input?: string | null): string | undefined {
+  if (!input) return undefined;
+  const trimmed = String(input).trim();
+  const urlMatch = trimmed.match(/\/folders\/([A-Za-z0-9_-]+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+  if (/^[A-Za-z0-9_-]{10,}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return undefined;
 }

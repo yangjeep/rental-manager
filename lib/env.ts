@@ -1,13 +1,8 @@
 export type EnvSource = Record<string, string | undefined>;
 
 export function readEnv(source: EnvSource, key: string): string | undefined {
-  if (source && source[key] !== undefined) {
-    return source[key];
-  }
-  if (typeof process !== "undefined" && process.env && process.env[key] !== undefined) {
-    return process.env[key];
-  }
-  return undefined;
+  if (!source) return undefined;
+  return source[key];
 }
 
 export function envFlag(source: EnvSource, key: string): boolean {

@@ -17,7 +17,7 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
   const tabs: Tab[] = [
     {
       id: "overview",
-      label: "Overview",
+      label: "Residential Listings",
       content: (
         <div className="space-y-6">
           <Suspense fallback={<div className="card p-4">Loading filters...</div>}>

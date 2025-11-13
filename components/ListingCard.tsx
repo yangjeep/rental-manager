@@ -8,7 +8,7 @@ type ListingCardProps = {
 };
 
 export default function ListingCard({ listing, onClick, isSelected = false }: ListingCardProps) {
-  const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder.jpg";
+  const imageSrc = (listing.images && listing.images[0]) || listing.imageUrl || "/placeholder1.jpg";
   
   return (
     <Link 
@@ -23,8 +23,8 @@ export default function ListingCard({ listing, onClick, isSelected = false }: Li
           className="h-32 w-full object-cover"
         onError={(e) => {
           // Fallback to placeholder if image fails to load
-          if ((e.target as HTMLImageElement).src !== "/placeholder.jpg") {
-            (e.target as HTMLImageElement).src = "/placeholder.jpg";
+          if ((e.target as HTMLImageElement).src !== "/placeholder1.jpg") {
+            (e.target as HTMLImageElement).src = "/placeholder1.jpg";
           }
         }}
       />

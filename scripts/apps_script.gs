@@ -29,7 +29,7 @@ function doGet(e) {
       // Only include image files
       if (imageTypes.includes(mimeType)) {
         const fileId = file.getId();
-        // Use the uc?export=view format - will be proxied through Next.js API route
+        // Use the uc?export=view format for direct image URLs
         // Format: https://drive.google.com/uc?export=view&id=<fileId>
         const imageUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
         imageUrls.push(imageUrl);

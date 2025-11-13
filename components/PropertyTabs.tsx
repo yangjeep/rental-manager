@@ -10,11 +10,27 @@ import type { Listing } from "@/lib/types";
 
 type PropertyTabsProps = {
   listing: Listing;
+  searchParams?: Record<string, string | string[] | undefined>;
 };
 
-export default function PropertyTabs({ listing }: PropertyTabsProps) {
+export default function PropertyTabs({ listing, searchParams }: PropertyTabsProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const gallery = listing.images && listing.images.length ? listing.images : [listing.imageUrl || "/placeholder1.jpg", "/placeholder2.jpg"];
+
+  // Construct back URL with preserved filters
+  const backUrl = (() => {
+    if (!searchParams || Object.keys(searchParams).length === 0) {
+      return "/";
+    }
+    const params = new URLSearchParams();
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, Array.isArray(value) ? value[0] : value);
+      }
+    });
+    const queryString = params.toString();
+    return queryString ? `/?${queryString}` : "/";
+  })();
 
   const tabs: Tab[] = [
     {
@@ -23,7 +39,7 @@ export default function PropertyTabs({ listing }: PropertyTabsProps) {
       content: (
         <article className="space-y-6">
           <Link 
-            href="/" 
+            href={backUrl}
             className="inline-flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity mb-4"
           >
             <svg 

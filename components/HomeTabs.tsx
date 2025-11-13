@@ -1,5 +1,6 @@
 "use client";
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import Filters from "@/components/Filters";
 import ListingCard from "@/components/ListingCard";
 import TabbedLayout, { type Tab } from "@/components/TabbedLayout";
@@ -11,16 +12,50 @@ import type { Listing } from "@/lib/types";
 type HomeTabsProps = {
   filteredListings: Listing[];
   allListings?: Listing[];
+  searchParams?: Record<string, string | string[] | undefined>;
 };
 
-export default function HomeTabs({ filteredListings, allListings }: HomeTabsProps) {
+export default function HomeTabs({ filteredListings, allListings, searchParams }: HomeTabsProps) {
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  
+  // Construct query string for property links
+  const queryString = (() => {
+    if (!searchParams || Object.keys(searchParams).length === 0) return "";
+    const params = new URLSearchParams();
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, Array.isArray(value) ? value[0] : value);
+      }
+    });
+    return params.toString();
+  })();
+  
+  // Check if any filters are applied
+  const hasFilters = searchParams && Object.keys(searchParams).length > 0;
+  
   const tabs: Tab[] = [
     {
       id: "overview",
       label: "Residential Listings",
       content: (
         <div className="space-y-6">
+          {hasFilters && (
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Go back to All Listings
+            </Link>
+          )}
           <Suspense fallback={<div className="card p-4">Loading filters...</div>}>
             <Filters allListings={allListings || filteredListings} />
           </Suspense>
@@ -41,6 +76,7 @@ export default function HomeTabs({ filteredListings, allListings }: HomeTabsProp
                   <ListingCard 
                     key={l.id} 
                     listing={l}
+                    queryString={queryString}
                     onClick={(e) => {
                       e.preventDefault();
                       setSelectedListingId(l.id);

@@ -5,10 +5,11 @@ import type { Listing } from "@/lib/types";
 // Revalidate every 60 seconds (or use REVALIDATE_SECONDS env var)
 export const revalidate = Number(process.env.REVALIDATE_SECONDS) || 60;
 
-export default async function Home({ searchParams }: { searchParams: any }) {
+export default async function Home({ searchParams }: { searchParams: Promise<any> }) {
+  const resolvedSearchParams = await searchParams;
   const all = await fetchListings();
-  const filtered = applyFilters(all, searchParams);
-  return <HomeTabs filteredListings={filtered} allListings={all} />;
+  const filtered = applyFilters(all, resolvedSearchParams);
+  return <HomeTabs filteredListings={filtered} allListings={all} searchParams={resolvedSearchParams} />;
 }
 
 function applyFilters(list: Listing[], q: Record<string, string>) {

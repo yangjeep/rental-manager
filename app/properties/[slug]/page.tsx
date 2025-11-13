@@ -20,11 +20,20 @@ export async function generateStaticParams() {
   }
 }
 
-export default async function PropertyPage({ params }: { params: { slug: string } }) {
+export default async function PropertyPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
   const list: Listing[] = await fetchListings();
   // Ensure both slugs are strings for comparison
-  const item = list.find(l => String(l.slug) === String(params.slug));
+  const item = list.find(l => String(l.slug) === String(resolvedParams.slug));
   if (!item) return <div className="opacity-70">Not found.</div>;
 
-  return <PropertyTabs listing={item} />;
+  return <PropertyTabs listing={item} searchParams={resolvedSearchParams} />;
 }

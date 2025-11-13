@@ -12,8 +12,6 @@ export type Listing = {
   pets?: "Allowed" | "Not Allowed" | "Conditional" | string;
   description?: string;
 
-  imageUrl?: string;             // cover fallback
-  images?: string[];             // gallery (when DRIVE_LIST_ENDPOINT is set)
-  imageFolderUrl?: string;       // raw folder link
+  imageUrl?: string;             // R2-hosted cover image
 };
 

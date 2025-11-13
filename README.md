@@ -10,7 +10,7 @@ companion Worker.
 ```bash
 npm install
 cp env.example .env
-# Fill in AIRTABLE_* values and optional DRIVE_LIST_ENDPOINT / DEMO_* secrets
+# Fill in AIRTABLE_* values and optional DEMO_* secrets
 
 # Requires `wrangler` (install via `npm install -g wrangler` or `brew install wrangler`)
 npm run dev
@@ -40,11 +40,8 @@ type-safe during CI even though Pages is responsible for the actual bundling ste
 - `functions/[[path]].ts` — Router that serves `/`, `/properties/:slug`, and `/sitemap.xml`
   with server-rendered HTML. It applies demo-only Basic Auth (`DEMO_USER`/`DEMO_PASS`)
   and optionally injects `X-Robots-Tag` when `DEMO_NOINDEX=true`.
-- `functions/api/image.ts` — Lightweight proxy that fetches Google Drive (or any public)
-  image URL and returns it with generous caching headers. This route is also protected by
-  the same Basic Auth + no-index headers as the main pages.
 - `lib/fetchListings.ts` — Airtable integration that maps table rows into strongly typed
-  listings and optionally enriches them with Google Drive image URLs.
+  listings and reads Cloudflare R2 attachment URLs for imagery.
 - `lib/templates.ts` — Zero-dependency HTML templates for the homepage, filters, cards,
   and property detail views.
 - `public/styles.css` — Small handcrafted stylesheet (no Tailwind or PostCSS) that keeps
@@ -71,22 +68,7 @@ Table name: `Properties` (configurable via `AIRTABLE_TABLE_NAME`).
 - `Slug` — URL-friendly identifier (auto-generated from Title if not provided)
 - `Pets` — Pet policy (e.g., "Allowed", "Not Allowed", "Conditional")
 - `Parking` — Parking information (free text like "1 spot" or "Street")
-- `Image Folder URL` — Google Drive folder URL or folder ID for property images
 - `R2 Images` — Attachment field that stores Cloudflare R2 image URLs (preferred)
-
-### Setting Up Google Drive Images
-
-1. **Add the folder field** — In Airtable, ensure `Image Folder URL` exists and contains
-   either the Drive folder link or the raw folder ID for each listing.
-2. **Deploy the Apps Script** — Copy `scripts/apps_script.gs` into a new Google Apps
-   Script project, deploy it as a web app (execute as you, accessible to anyone), and
-   note the URL.
-3. **Configure the endpoint** — Set `DRIVE_LIST_ENDPOINT=<apps-script-url>` in your
-   environment variables. The worker will call `?folder=<folderId>` and expects a JSON
-   array of image URLs.
-
-When `DRIVE_LIST_ENDPOINT` is present, the site will call it for each listing that does
-not already have R2-hosted images and render the returned gallery directly.
 
 ## Cloudflare R2 Image Automation
 
@@ -105,6 +87,7 @@ images from Cloudflare without touching Google infrastructure.
    - Configure the worker bindings/secrets so it can talk to Airtable, your Apps Script
      endpoint, and the target R2 bucket.
 2. **Wire Airtable automations**
+   - Add an `Image Folder URL` field in Airtable (Drive folder link or ID).
    - Create an automation that fires when `Image Folder URL` changes (or on demand).
    - Add a "Run script" step that POSTs `{ "recordId": "recXXXX" }` to the Worker URL.
 3. **Worker behaviour**
@@ -112,7 +95,7 @@ images from Cloudflare without touching Google infrastructure.
      stores the new public URLs back inside the `R2 Images` attachment field.
 
 With this in place the web UI always prefers the R2 attachment URLs, so Cloudflare serves
-all media.
+all media while letting Drive act as an optional source of truth.
 
 ## Environment Variables
 
@@ -120,9 +103,7 @@ all media.
 AIRTABLE_TOKEN                # required Airtable API token
 AIRTABLE_BASE_ID              # required base ID
 AIRTABLE_TABLE_NAME           # defaults to "Properties"
-AIRTABLE_IMAGE_FOLDER_FIELD   # defaults to "Image Folder URL"
 AIRTABLE_R2_IMAGE_FIELD       # defaults to "R2 Images"
-DRIVE_LIST_ENDPOINT           # optional Google Apps Script endpoint
 R2_PUBLIC_BASE_URL            # used by workers/r2-sync when writing back to Airtable
 DEMO_USER / DEMO_PASS         # enable Basic Auth for previews
 DEMO_NOINDEX                  # set to true to emit X-Robots-Tag headers
@@ -139,6 +120,6 @@ for CI gating.
 
 - Cloudflare Pages Functions (native Workers runtime)
 - TypeScript-first templating (no React / Next.js)
-- Airtable + optional Google Drive enrichment
+- Airtable + Cloudflare R2 attachments
 - Optional Cloudflare Worker for syncing Drive → R2
 - Lighthouse CI for performance monitoring

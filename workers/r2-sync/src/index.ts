@@ -1,5 +1,3 @@
-import { parseDriveFolderId } from '../../../lib/drive';
-
 type AirtableRecord = { id: string; fields: Record<string, any> };
 type UploadedAsset = { url: string; filename: string };
 type R2Bucket = {
@@ -176,4 +174,17 @@ function extensionFromContentType(type: string): string {
   if (type.includes('webp')) return '.webp';
   if (type.includes('gif')) return '.gif';
   return '.bin';
+}
+
+function parseDriveFolderId(input?: string | null): string | undefined {
+  if (!input) return undefined;
+  const trimmed = String(input).trim();
+  const urlMatch = trimmed.match(/\/folders\/([A-Za-z0-9_-]+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+  if (/^[A-Za-z0-9_-]{10,}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return undefined;
 }

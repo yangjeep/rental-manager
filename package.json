@@ -3,10 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "wrangler pages dev public --compatibility-date=2024-12-18 --port 3000",
-    "build": "tsc --noEmit",
-    "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
+    "dev": "npx wrangler pages dev public --compatibility-date=2024-12-18 --port 3000",
+    "build": "npx tsc --noEmit",
+    "lint": "npx tsc --noEmit",
+    "typecheck": "npx tsc --noEmit",
     "lighthouse": "lhci autorun",
     "lighthouse:local": "lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --view",
     "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js"
@@ -15,6 +15,7 @@
     "@lhci/cli": "^0.12.0",
     "@types/node": "24.10.1",
     "lighthouse": "^13.0.1",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "wrangler": "^3.0.0"
   }
 }

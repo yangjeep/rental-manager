@@ -45,9 +45,6 @@ export function renderPropertyPage(listing: Listing): string {
   const description = listing.description
     ? `<div class="prose">${escapeHtml(listing.description).replace(/\n/g, "<br>")}</div>`
     : `<p class="muted">No description yet.</p>`;
-  const folderLink = listing.imageFolderUrl
-    ? `<a class="button ghost" href="${escapeAttribute(listing.imageFolderUrl)}" target="_blank" rel="noopener noreferrer">View Google Drive album</a>`
-    : "";
   return layout(`${listing.title} · ${SITE_TITLE}`, `
     <a class="back" href="/">← Back to all listings</a>
     <article class="property">
@@ -59,7 +56,6 @@ export function renderPropertyPage(listing: Listing): string {
         </div>
         <div class="cta">
           <span class="price">${formatPrice(listing.price)} / mo</span>
-          ${folderLink}
           <a class="button" href="mailto:rentals@example.com?subject=${encodeURIComponent(`Inquiry: ${listing.title}`)}">Contact</a>
         </div>
       </header>
@@ -162,12 +158,10 @@ function renderListingCard(listing: Listing): string {
 }
 
 function renderGallery(listing: Listing): string {
-  const images = listing.images && listing.images.length > 0 ? listing.images : [listing.imageUrl || "/placeholder.jpg"];
-  const slides = images
-    .filter(Boolean)
-    .map(url => `<img src="${escapeAttribute(url!)}" alt="${escapeAttribute(listing.title)} photo" loading="lazy" />`)
-    .join("");
-  return `<div class="gallery">${slides}</div>`;
+  const image = listing.imageUrl || "/placeholder.jpg";
+  return `<div class="gallery">
+    <img src="${escapeAttribute(image)}" alt="${escapeAttribute(listing.title)} photo" loading="lazy" />
+  </div>`;
 }
 
 function layout(title: string, body: string): string {

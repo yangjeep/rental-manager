@@ -21,6 +21,11 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
     return authResponse;
   }
 
+  // Pass through static files to Cloudflare Pages static file serving
+  if (isStaticFile(pathname)) {
+    return await context.next();
+  }
+
   if (pathname === "/sitemap.xml") {
     const listings = await fetchListings(context.env);
     const xml = renderSitemap(listings, `${url.protocol}//${url.host}`);
@@ -60,6 +65,29 @@ export const onRequestGet: PagesFunction<Record<string, string>> = async context
 function normalizePath(pathname: string): string {
   if (pathname === "/") return "/";
   return pathname.replace(/\/$/, "");
+}
+
+function isStaticFile(pathname: string): boolean {
+  const staticExtensions = [
+    ".css",
+    ".js",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".txt",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
+    ".json",
+    ".pdf",
+  ];
+  return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext));
 }
 
 function applyFilters(listings: Listing[], params: URLSearchParams): Listing[] {

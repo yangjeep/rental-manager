@@ -3,19 +3,33 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "npx wrangler pages dev public --compatibility-date=2024-12-18 --port 3000",
-    "build": "npx tsc --noEmit",
-    "lint": "npx tsc --noEmit",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "typecheck": "npx tsc --noEmit",
     "watch": "npx tsc --noEmit --watch",
     "lighthouse": "lhci autorun",
     "lighthouse:local": "lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html --view",
-    "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js"
+    "lighthouse:baseline": "node scripts/generate-lighthouse-baseline.js",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:deploy": "npm run pages:build && wrangler pages deploy .vercel/output/static"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.11.0",
     "@lhci/cli": "^0.12.0",
     "@types/node": "24.10.1",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
     "lighthouse": "^13.0.1",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
     "typescript": "5.4.5",
     "wrangler": "^3.0.0"
   }

@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg: #05060a;
+  --fg: #f4f4f5;
+  --card: #11121a;
+  --muted: #9ca3af;
+  --accent: #6ee7b7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: radial-gradient(circle at top, #10152b, #05060a 55%);
+  color: var(--fg);
+  min-height: 100vh;
+}
+
+/* Responsive styles for mobile */
+@media (max-width: 640px) {
+  .hero-meta {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 780px) {
+  .site-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site-nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .map-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .map-grid #map {
+    min-height: 320px;
+  }
+}
+

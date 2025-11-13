@@ -111,6 +111,6 @@ curl -X POST https://your-worker.workers.dev/sync-images \
 4. Lists all images in the Drive folder
 5. Downloads each image
 6. Deletes existing images for this property from R2 (if any)
-7. Uploads images to R2 at `/properties/{slug}/image-1.jpg`, `image-2.jpg`, etc.
+7. Uploads images to R2 at `/{slug}/original-filename.jpg` (keeps original names)
 8. Returns list of uploaded image URLs
 

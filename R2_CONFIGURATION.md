@@ -13,7 +13,7 @@ R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
 **How it works:**
 - Uses simple HTTP HEAD requests to check if images exist
-- Tries sequential filenames: `image-1.jpg`, `image-2.jpg`, etc.
+- Tries sequential filenames: `/{slug}/image-1.jpg`, `image-2.jpg`, etc.
 - No credentials needed
 - Simpler and sufficient for most use cases
 

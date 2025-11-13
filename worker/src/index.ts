@@ -109,9 +109,8 @@ async function handleSyncImages(request: Request, env: Env): Promise<Response> {
     // Delete existing images for this property in R2
     await deletePropertyImages(env.R2_BUCKET, slug);
 
-    // Download and upload images
+    // Download and upload images (keep original filenames)
     const uploadedImages: string[] = [];
-    let imageIndex = 1;
 
     for (const file of driveFiles) {
       // Only process image files
@@ -124,11 +123,11 @@ async function handleSyncImages(request: Request, env: Env): Promise<Response> {
         // Download image from Drive
         const imageData = await downloadDriveFile(file.id, accessToken);
         
-        // Determine file extension from mime type
-        const extension = getExtensionFromMimeType(file.mimeType);
-        const r2Key = `properties/${slug}/image-${imageIndex}.${extension}`;
+        // Use original filename from Drive, sanitize it for R2
+        const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const r2Key = `${slug}/${sanitizedFilename}`;
 
-        // Upload to R2
+        // Upload to R2 with original filename
         await env.R2_BUCKET.put(r2Key, imageData, {
           httpMetadata: {
             contentType: file.mimeType,
@@ -136,8 +135,7 @@ async function handleSyncImages(request: Request, env: Env): Promise<Response> {
         });
 
         uploadedImages.push(r2Key);
-        console.log(`Uploaded: ${r2Key}`);
-        imageIndex++;
+        console.log(`Uploaded: ${r2Key} (original: ${file.name})`);
       } catch (error) {
         console.error(`Failed to process ${file.name}:`, error);
         // Continue with other images
@@ -308,7 +306,7 @@ async function downloadDriveFile(fileId: string, accessToken: string): Promise<A
  * Delete all existing images for a property from R2
  */
 async function deletePropertyImages(bucket: R2Bucket, slug: string): Promise<void> {
-  const prefix = `properties/${slug}/`;
+  const prefix = `${slug}/`;
   
   // List all objects with this prefix
   const listed = await bucket.list({ prefix });

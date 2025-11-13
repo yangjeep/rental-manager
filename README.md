@@ -95,8 +95,10 @@ Images are automatically synced from Google Drive to Cloudflare R2 when you upda
 **How it works:**
 - Realtor pastes Google Drive folder URL into AirTable
 - AirTable triggers webhook to Cloudflare Worker
-- Worker downloads images from Drive and uploads to R2
-- First image becomes the thumbnail (`image-1.jpg`)
+- Worker downloads images from Drive and uploads to R2 (keeps original filenames)
+- Images stored at: `/{slug}/original-filename.jpg`
+- Next.js lists all images via R2 API and sorts alphanumerically
+- First image (alphabetically) becomes the thumbnail
 - Next.js app fetches images from R2 (fast, unlimited bandwidth)
 
 #### Option 2: Google Drive Only (Fallback/Alternative)
@@ -123,13 +125,10 @@ If R2 is not set up, images can be fetched directly from Google Drive:
    - It should return a JSON array of image URLs
 
 **Image Resolution Priority:**
-1. Try R2 first:
-   - If `R2_PUBLIC_URL` is set: Use public URL with HEAD requests (simpler)
-   - Otherwise: Use R2 API with credentials (if configured)
-2. Fallback to Google Drive (if `DRIVE_LIST_ENDPOINT` is set)
-3. Finally, use placeholder images
+1. Try R2: Lists all images in folder via R2 API, sorts alphanumerically
+2. Fallback to placeholder images if R2 not configured or no images found
 
-**Note:** For production, you can use R2 API credentials for more efficient listing. For demo/dev, just using `R2_PUBLIC_URL` is simpler and sufficient.
+**Note:** R2 API credentials are required to list images (no filename conventions assumed).
 
 ## Security / Demo
 
@@ -194,8 +193,13 @@ Results are uploaded as artifacts and the workflow will fail if performance thre
 
 **Optional:**
 - `AIRTABLE_TABLE_NAME` — Table name (defaults to "Properties")
-- `R2_PUBLIC_URL` — Cloudflare R2 public URL for image storage (recommended)
-- `DRIVE_LIST_ENDPOINT` — Google Drive images endpoint (fallback if R2 not available)
+
+**For R2 Image Storage (recommended):**
+- `R2_PUBLIC_URL` — Cloudflare R2 public URL (required)
+- `R2_ACCOUNT_ID` — R2 account ID (required for listing images)
+- `R2_ACCESS_KEY_ID` — R2 access key (required for listing images)
+- `R2_SECRET_ACCESS_KEY` — R2 secret key (required for listing images)
+- `R2_BUCKET_NAME` — R2 bucket name (defaults to "rental-manager-images")
 
 **For image sync (if using R2):**
 - See `worker/README.md` for Worker-specific environment variables

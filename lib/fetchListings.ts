@@ -29,116 +29,102 @@ function parseDriveFolderId(input?: string | null): string | undefined {
   return undefined;
 }
 
-/**
- * Fetch images from R2 bucket using public URL (HEAD requests)
- * Tries to find images at: /properties/{slug}/image-1.jpg, image-2.jpg, etc.
- */
-async function fetchImagesFromR2PublicUrl(slug: string, r2PublicUrl: string): Promise<string[]> {
-  const images: string[] = [];
-  const maxImages = 20; // Try up to 20 images
-
-  // Common image extensions to try
-  const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-  for (let i = 1; i <= maxImages; i++) {
-    let found = false;
-
-    // Try each extension
-    for (const ext of extensions) {
-      const imageUrl = `${r2PublicUrl}/properties/${slug}/image-${i}.${ext}`;
-      
-      try {
-        // Use HEAD request to check if image exists (faster than GET)
-        const response = await fetch(imageUrl, { 
-          method: 'HEAD',
-          next: { revalidate: 3600 } // Cache for 1 hour
-        });
-        
-        if (response.ok) {
-          images.push(imageUrl);
-          found = true;
-          break; // Found this index, move to next
-        }
-      } catch (error) {
-        // Silently ignore fetch errors
-        continue;
-      }
-    }
-
-    // If we didn't find this index, assume no more images exist
-    if (!found) {
-      break;
-    }
-  }
-
-  return images;
-}
 
 /**
  * Fetch images from R2 bucket using S3 API (with credentials)
- * Lists all objects in properties/{slug}/ folder
+ * Lists all objects in {slug}/ folder
  */
 async function fetchImagesFromR2Api(slug: string): Promise<string[]> {
+  console.log(`[R2 API] Starting fetch for slug: ${slug}`);
+  
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   const bucketName = process.env.R2_BUCKET_NAME || 'rental-manager-images';
   const publicUrl = process.env.R2_PUBLIC_URL;
 
+  console.log(`[R2 API] Account ID: ${accountId ? '✅ Set' : '❌ Not set'}`);
+  console.log(`[R2 API] Access Key ID: ${accessKeyId ? '✅ Set' : '❌ Not set'}`);
+  console.log(`[R2 API] Secret Key: ${secretAccessKey ? '✅ Set' : '❌ Not set'}`);
+  console.log(`[R2 API] Bucket Name: ${bucketName}`);
+  console.log(`[R2 API] Public URL: ${publicUrl || '❌ Not set'}`);
+
   if (!accountId || !accessKeyId || !secretAccessKey || !publicUrl) {
+    console.log(`[R2 API] ⚠️ Missing credentials, skipping API method`);
     return [];
   }
 
   try {
+    const endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+    console.log(`[R2 API] Endpoint: ${endpoint}`);
+    
     const s3Client = new S3Client({
       region: 'auto',
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      endpoint,
       credentials: {
         accessKeyId,
         secretAccessKey,
       },
     });
 
+    const prefix = `${slug}/`;
+    console.log(`[R2 API] Listing objects with prefix: ${prefix}`);
+
     const command = new ListObjectsV2Command({
       Bucket: bucketName,
-      Prefix: `properties/${slug}/`,
+      Prefix: prefix,
     });
 
     const response = await s3Client.send(command);
 
+    console.log(`[R2 API] Response received. Objects found: ${response.Contents?.length || 0}`);
+
     if (!response.Contents || response.Contents.length === 0) {
+      console.log(`[R2 API] ⚠️ No objects found in bucket`);
       return [];
     }
 
-    // Sort by key (which includes image-1, image-2, etc.)
+    // Filter for image files and sort alphanumerically by filename
     const images = response.Contents
-      .filter(obj => obj.Key && /\.(jpg|jpeg|png|webp|gif)$/i.test(obj.Key))
-      .sort((a, b) => (a.Key || '').localeCompare(b.Key || ''))
+      .filter(obj => obj.Key && /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(obj.Key))
+      .sort((a, b) => {
+        // Sort alphanumerically by the full key
+        const keyA = (a.Key || '').toLowerCase();
+        const keyB = (b.Key || '').toLowerCase();
+        return keyA.localeCompare(keyB, undefined, { numeric: true, sensitivity: 'base' });
+      })
       .map(obj => `${publicUrl}/${obj.Key}`);
+
+    console.log(`[R2 API] ✅ Images after filtering and sorting (alphanumeric):`);
+    images.forEach((img, idx) => console.log(`  ${idx + 1}. ${img}`));
 
     return images;
   } catch (error) {
-    console.error('Error fetching from R2 API:', error);
+    console.error('[R2 API] ❌ Error fetching from R2 API:', error);
+    if (error instanceof Error) {
+      console.error('[R2 API] Error message:', error.message);
+      console.error('[R2 API] Error stack:', error.stack);
+    }
     return [];
   }
 }
 
 /**
- * Fetch images from R2 - tries public URL first, then API credentials
+ * Fetch images from R2 - lists all images in folder and sorts alphanumerically
  */
 async function fetchImagesFromR2(slug: string): Promise<string[]> {
-  const r2PublicUrl = process.env.R2_PUBLIC_URL;
+  console.log(`\n=== [R2] Fetching images for property: ${slug} ===`);
+  console.log(`[R2] Using API to list all images in folder, sorted alphanumerically`);
   
-  // Strategy 1: Use public URL with HEAD requests (simpler, no credentials needed)
-  if (r2PublicUrl) {
-    const images = await fetchImagesFromR2PublicUrl(slug, r2PublicUrl);
-    if (images.length > 0) {
-      return images;
-    }
-  }
-
-  // Strategy 2: Use R2 API with credentials (more efficient for listing)
   const images = await fetchImagesFromR2Api(slug);
+  
+  if (images.length > 0) {
+    console.log(`[R2] ✅ Success! Found ${images.length} images`);
+  } else {
+    console.log(`[R2] ⚠️ No images found`);
+  }
+  
+  console.log(`=== [R2] Complete ===\n`);
   return images;
 }
 
@@ -222,63 +208,43 @@ export async function fetchListings(): Promise<Listing[]> {
     };
   });
 
-  // Image resolution: Try R2 first, then fallback to Drive
-  const listEndpoint = process.env.DRIVE_LIST_ENDPOINT;
-
+  // Image resolution: Try R2, then fallback to placeholders
   for (const item of baseItems) {
-    let imagesFound = false;
+    console.log(`\n🔍 [Image Resolution] Property: ${item.title} (${item.slug})`);
 
-    // Step 1: Try R2 bucket first (uses public URL or API credentials)
+    // Try R2 bucket (uses public URL or API credentials)
     if (item.slug) {
+      console.log(`[Image Resolution] Trying R2...`);
       const r2Images = await fetchImagesFromR2(item.slug);
       if (r2Images.length > 0) {
+        console.log(`[Image Resolution] ✅ R2 success! Found ${r2Images.length} images`);
         item.images = r2Images;
         item.imageUrl = r2Images[0];
-        imagesFound = true;
+      } else {
+        console.log(`[Image Resolution] ⚠️ R2 returned no images - will use placeholders`);
       }
     }
 
-    // Step 2: Fallback to Google Drive if R2 didn't have images
-    if (!imagesFound && listEndpoint) {
-      const folderId = parseDriveFolderId(item.imageFolderUrl);
-      if (folderId) {
-        try {
-          const u = new URL(listEndpoint);
-          u.searchParams.set("folder", folderId);
-          const endpointUrl = u.toString();
-          // Cache image URLs for 1 hour (images don't change often)
-          const r = await fetch(endpointUrl, { 
-            next: { revalidate: 3600 } // Cache for 1 hour
-          });
-          if (r.ok) {
-            const data = await r.json();
-            // Handle both array response and error object response
-            if (Array.isArray(data) && data.length > 0) {
-              // Use direct URLs (no proxy needed)
-              item.images = data;
-              item.imageUrl = data[0];
-              imagesFound = true;
-            }
-          }
-        } catch (error) {
-          // Silently ignore errors - images will fall back to placeholder
-        }
-      }
-    }
+    console.log(`[Image Resolution] ================================\n`);
   }
   
-  // 确保所有 items 都有 imageUrl 和 demo images，如果没有则使用 placeholders
+  // Ensure all items have imageUrl and images, use placeholders as fallback
+  console.log(`\n📝 [Placeholder Fallback] Applying placeholders where needed...`);
   for (let i = 0; i < baseItems.length; i++) {
     const item = baseItems[i];
     if (!item.imageUrl || item.imageUrl.trim() === "") {
       // Alternate between placeholder images for demo purposes
       item.imageUrl = i % 2 === 0 ? "/placeholder1.jpg" : "/placeholder2.jpg";
+      console.log(`[Placeholder Fallback] ${item.slug}: Using placeholder for imageUrl`);
     }
     // If no images array, provide both placeholders for gallery demo
     if (!item.images || item.images.length === 0) {
       item.images = ["/placeholder1.jpg", "/placeholder2.jpg"];
+      console.log(`[Placeholder Fallback] ${item.slug}: Using placeholders for images array`);
     }
   }
+  console.log(`[Placeholder Fallback] Complete!\n`);
+
 
   return baseItems;
 }

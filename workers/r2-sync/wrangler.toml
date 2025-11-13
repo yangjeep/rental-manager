@@ -1,0 +1,12 @@
+name = "rental-r2-sync"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+
+[[r2_buckets]]
+binding = "R2_IMAGES"
+bucket_name = "rental-images"
+
+[vars]
+AIRTABLE_TABLE_NAME = "Properties"
+AIRTABLE_IMAGE_FOLDER_FIELD = "Image Folder URL"
+AIRTABLE_R2_IMAGE_FIELD = "R2 Images"

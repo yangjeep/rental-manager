@@ -66,15 +66,11 @@ npx wrangler secret put AIRTABLE_TOKEN
 # Airtable Base ID
 npx wrangler secret put AIRTABLE_BASE_ID
 # When prompted, paste your Airtable base ID
-```
 
-**Optional secrets:**
-
-```bash
-# Optional: Secure the manual trigger endpoint
+# Bearer token for securing manual trigger endpoint (required)
 npx wrangler secret put SYNC_SECRET
 # When prompted, paste a secret (e.g., random UUID)
-# If set, manual triggers require: Authorization: Bearer <secret>
+# Manual triggers require: Authorization: Bearer <secret>
 ```
 
 #### For Demo Environment:
@@ -84,13 +80,14 @@ npx wrangler secret put SYNC_SECRET
 npx wrangler secret put GOOGLE_DRIVE_API_KEY --env demo
 npx wrangler secret put AIRTABLE_TOKEN --env demo
 npx wrangler secret put AIRTABLE_BASE_ID --env demo
-npx wrangler secret put SYNC_SECRET --env demo  # Optional
+npx wrangler secret put SYNC_SECRET --env demo  # Required
 ```
 
 **Note:** 
 - Secrets are stored securely by Cloudflare and are not visible in your code
 - R2 bucket names are already configured in `wrangler.toml`
 - `AIRTABLE_TABLE_NAME` defaults to "Properties" but can be set as a secret if different
+- **Important:** `SYNC_SECRET` is required - the worker will return 500 error if not configured, and all HTTP requests require valid Bearer token authentication
 
 ### 3. Configure Cron Schedule (Optional)
 
@@ -134,7 +131,7 @@ GOOGLE_DRIVE_API_KEY=your-api-key-here
 AIRTABLE_TOKEN=your-airtable-token-here
 AIRTABLE_BASE_ID=your-base-id-here
 AIRTABLE_TABLE_NAME=Properties
-SYNC_SECRET=your-secret-here
+SYNC_SECRET=your-secret-here  # Required - use a secure random string
 EOF
 ```
 
@@ -178,20 +175,14 @@ Trigger a bulk sync manually via HTTP:
 
 **Production:**
 ```bash
-# Without authentication (if SYNC_SECRET not set)
-curl https://rental-manager-image-sync.dwx-rental.workers.dev/sync
-
-# With authentication (if SYNC_SECRET is set)
+# Authentication is required - Bearer token must be provided
 curl -H "Authorization: Bearer your-secret-here" \
   https://rental-manager-image-sync.dwx-rental.workers.dev/sync
 ```
 
 **Demo:**
 ```bash
-# Without authentication (if SYNC_SECRET not set)
-curl https://rental-manager-image-sync-demo.dwx-rental.workers.dev/sync
-
-# With authentication (if SYNC_SECRET is set)
+# Authentication is required - Bearer token must be provided
 curl -H "Authorization: Bearer your-secret-here" \
   https://rental-manager-image-sync-demo.dwx-rental.workers.dev/sync
 ```
@@ -277,13 +268,13 @@ The worker uses MD5 hash comparison to avoid unnecessary downloads:
 
 Triggers a bulk sync of all properties.
 
-**Headers (optional if SYNC_SECRET is set):**
-- `Authorization: Bearer <SYNC_SECRET>`
+**Headers (required):**
+- `Authorization: Bearer <SYNC_SECRET>` - Bearer token authentication is required
 
 **Response:**
 - `200 OK` - Sync completed (check `summary` for details)
-- `401 Unauthorized` - Missing or invalid SYNC_SECRET
-- `500 Internal Server Error` - Configuration or API errors
+- `401 Unauthorized` - Missing or invalid Bearer token
+- `500 Internal Server Error` - Configuration or API errors (including if SYNC_SECRET is not configured)
 
 ## Monitoring
 
@@ -363,10 +354,12 @@ After deploying the worker:
 1. ✅ **Test manual trigger** - Run sync on-demand:
    ```bash
    # Production
-   curl https://rental-manager-image-sync.dwx-rental.workers.dev/sync
+   curl -H "Authorization: Bearer your-secret-here" \
+     https://rental-manager-image-sync.dwx-rental.workers.dev/sync
    
    # Demo
-   curl https://rental-manager-image-sync-demo.dwx-rental.workers.dev/sync
+   curl -H "Authorization: Bearer your-secret-here" \
+     https://rental-manager-image-sync-demo.dwx-rental.workers.dev/sync
    ```
 2. ✅ **Monitor first sync** - Use `npx wrangler tail` to watch progress
 3. ✅ **Verify images in R2** - Check that images appear correctly

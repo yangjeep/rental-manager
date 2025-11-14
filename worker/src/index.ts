@@ -11,7 +11,7 @@ export interface Env {
   AIRTABLE_TOKEN?: string;
   AIRTABLE_BASE_ID?: string;
   AIRTABLE_TABLE_NAME?: string;
-  SYNC_SECRET?: string;
+  SYNC_SECRET: string;
 }
 
 interface Property {
@@ -78,12 +78,15 @@ export default {
 
     // Route: GET /sync or POST /sync
     if (url.pathname === "/sync" || url.pathname === "/") {
-      // Validate secret if provided
-      if (env.SYNC_SECRET) {
-        const authHeader = request.headers.get("Authorization");
-        if (authHeader !== `Bearer ${env.SYNC_SECRET}`) {
-          return jsonResponse({ error: "Unauthorized" }, 401);
-        }
+      // Require SYNC_SECRET to be configured
+      if (!env.SYNC_SECRET) {
+        return jsonResponse({ error: "SYNC_SECRET not configured" }, 500);
+      }
+
+      // Validate Bearer token - authentication is required
+      const authHeader = request.headers.get("Authorization");
+      if (authHeader !== `Bearer ${env.SYNC_SECRET}`) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
       if (request.method === "GET" || request.method === "POST") {

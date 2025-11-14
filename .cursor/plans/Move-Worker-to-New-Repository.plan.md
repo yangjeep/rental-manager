@@ -3,7 +3,7 @@
 
 ## Overview
 
-Move the worker directory from `/Users/yangjeep/ws/yangjeep/rental-manager/worker` to `/Users/yangjeep/ws/yangjeep/gdrive-cfr2-image-sync`, creating a standalone repository for the Cloudflare Worker.
+Move the worker directory from `/Users/yangjeep/ws/yangjeep/rental-manager/worker` to `/Users/yangjeep/ws/yangjeep/gdrive-cfr2-image-sync`, creating a standalone repository for the Cloudflare Worker.plans
 
 ## Implementation Plan
 

@@ -1,6 +1,14 @@
 # Image Sync Worker
 
-Cloudflare Worker that syncs images from Google Drive to R2 bucket when triggered by Airtable webhooks.
+Cloudflare Worker that bulk syncs images from Google Drive to R2 bucket for all properties. Uses MD5 hash comparison to only sync changed files, reducing bandwidth and processing time. Supports both manual HTTP triggers and scheduled cron jobs.
+
+## Features
+
+- **Bulk Sync**: Syncs all properties with Image Folder URL in a single operation
+- **Hash Comparison**: Only syncs files that have changed (MD5 hash comparison)
+- **Scheduled Sync**: Automatic sync via cron triggers (configurable schedule)
+- **Manual Trigger**: On-demand sync via HTTP endpoint
+- **Efficient**: Skips unchanged files, processes only what's needed
 
 ## Prerequisites
 
@@ -11,7 +19,10 @@ Before deploying the worker, ensure you have:
    - Demo: `rental-manager-demo-images`
 2. **Google Drive API Key** (see `../GOOGLE_DRIVE_SETUP.md`)
    - The Drive folders must be set to "Anyone with the link can view"
-3. **Airtable Base** with Properties table containing `Image Folder URL` field
+3. **Airtable Base** with Properties table containing:
+   - `Image Folder URL` field (Google Drive folder URL or ID)
+   - `Slug` field (or `Title` field for auto-generation)
+   - Airtable API token with read access
 
 ## Environments
 
@@ -23,7 +34,8 @@ The worker supports two environments:
 Each environment has its own:
 - Worker deployment (separate URLs)
 - R2 bucket binding
-- Secrets (can use same or different API keys/secrets)
+- Secrets and configuration
+- Cron schedule (can be different)
 
 ## Setup
 
@@ -40,43 +52,64 @@ Secrets are configured per environment. You can use the same secrets for both en
 
 #### For Production Environment:
 
-Set up Google Drive API key:
+**Required secrets:**
 
 ```bash
+# Google Drive API key
 npx wrangler secret put GOOGLE_DRIVE_API_KEY
 # When prompted, paste your Google Drive API key
+
+# Airtable API token
+npx wrangler secret put AIRTABLE_TOKEN
+# When prompted, paste your Airtable API token
+
+# Airtable Base ID
+npx wrangler secret put AIRTABLE_BASE_ID
+# When prompted, paste your Airtable base ID
 ```
 
-Set up webhook security secret:
+**Optional secrets:**
 
 ```bash
-npx wrangler secret put AIRTABLE_WEBHOOK_SECRET
-# When prompted, paste your secret (e.g., a random UUID or strong password)
+# Optional: Secure the manual trigger endpoint
+npx wrangler secret put SYNC_SECRET
+# When prompted, paste a secret (e.g., random UUID)
+# If set, manual triggers require: Authorization: Bearer <secret>
 ```
 
 #### For Demo Environment:
 
-Set up Google Drive API key (can be same or different from prod):
-
 ```bash
+# Same secrets, but with --env demo flag
 npx wrangler secret put GOOGLE_DRIVE_API_KEY --env demo
-# When prompted, paste your Google Drive API key
-```
-
-Set up webhook security secret (should be different from prod for security):
-
-```bash
-npx wrangler secret put AIRTABLE_WEBHOOK_SECRET --env demo
-# When prompted, paste your demo secret
+npx wrangler secret put AIRTABLE_TOKEN --env demo
+npx wrangler secret put AIRTABLE_BASE_ID --env demo
+npx wrangler secret put SYNC_SECRET --env demo  # Optional
 ```
 
 **Note:** 
 - Secrets are stored securely by Cloudflare and are not visible in your code
-- R2 bucket names are already configured in `wrangler.toml`:
-  - Production: `rental-manager-images`
-  - Demo: `rental-manager-demo-images`
+- R2 bucket names are already configured in `wrangler.toml`
+- `AIRTABLE_TABLE_NAME` defaults to "Properties" but can be set as a secret if different
 
-### 3. Local Development (Optional)
+### 3. Configure Cron Schedule (Optional)
+
+Edit `wrangler.toml` to adjust the cron schedule:
+
+```toml
+[triggers]
+crons = ["0 * * * *"]  # Every hour (default)
+```
+
+**Common schedules:**
+- `"0 * * * *"` - Every hour
+- `"0 0 * * *"` - Daily at midnight
+- `"0 */6 * * *"` - Every 6 hours
+- `"0 0 * * 0"` - Weekly on Sunday
+
+To disable cron, comment out or remove the `[triggers]` section.
+
+### 4. Local Development (Optional)
 
 Test the worker locally before deploying:
 
@@ -92,17 +125,22 @@ npm run dev:demo
 
 The worker will be available at `http://localhost:8787`
 
-To test locally, you'll need to set up local secrets in `.dev.vars`:
+To test locally, create `.dev.vars` file in the worker directory:
 
 ```bash
-# Create .dev.vars file in the worker directory
-echo "GOOGLE_DRIVE_API_KEY=your-api-key-here" > .dev.vars
-echo "AIRTABLE_WEBHOOK_SECRET=your-secret-here" >> .dev.vars
+# Create .dev.vars file
+cat > .dev.vars << EOF
+GOOGLE_DRIVE_API_KEY=your-api-key-here
+AIRTABLE_TOKEN=your-airtable-token-here
+AIRTABLE_BASE_ID=your-base-id-here
+AIRTABLE_TABLE_NAME=Properties
+SYNC_SECRET=your-secret-here
+EOF
 ```
 
 **Note:** Add `.dev.vars` to `.gitignore` to avoid committing secrets.
 
-### 4. Deploy to Cloudflare
+### 5. Deploy to Cloudflare
 
 **Deploy to Production:**
 ```bash
@@ -128,91 +166,113 @@ After deployment, note the Worker URL from the output:
 ✨  Deployed to https://rental-manager-image-sync-demo.your-subdomain.workers.dev
 ```
 
-**Save these URLs** - you'll need them for the Airtable webhook configurations.
+## Usage
+
+### Manual Trigger
+
+Trigger a bulk sync manually via HTTP:
+
+**Without authentication (if SYNC_SECRET not set):**
+```bash
+curl https://your-worker.workers.dev/sync
+```
+
+**With authentication (if SYNC_SECRET is set):**
+```bash
+curl -H "Authorization: Bearer your-secret-here" \
+  https://your-worker.workers.dev/sync
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "duration": "45230ms",
+  "summary": {
+    "propertiesProcessed": 25,
+    "propertiesSucceeded": 23,
+    "propertiesFailed": 2,
+    "propertiesSkipped": 0,
+    "filesSynced": 150,
+    "filesSkipped": 50,
+    "filesFailed": 3
+  },
+  "details": [
+    {
+      "slug": "property-1",
+      "status": "success",
+      "filesSynced": 5,
+      "filesSkipped": 2,
+      "filesFailed": 0,
+      "errors": []
+    }
+  ]
+}
+```
+
+### Scheduled Sync (Cron)
+
+The worker automatically runs on the schedule configured in `wrangler.toml`. No action needed - it will sync all properties periodically.
+
+**View cron execution logs:**
+```bash
+npx wrangler tail
+```
+
+## How It Works
+
+1. **Fetch Properties**: Worker fetches all properties from Airtable that have an `Image Folder URL`
+2. **For Each Property**:
+   - Extract Google Drive folder ID from the URL
+   - List all image files in the Drive folder (with MD5 hashes)
+   - For each image file:
+     - Check if file exists in R2 at `{slug}/filename.jpg`
+     - Compare MD5 hash from Drive with hash stored in R2 metadata
+     - If hashes match: **Skip** (file unchanged)
+     - If hashes differ or file missing: **Download and upload** to R2
+3. **Store Metadata**: Upload includes MD5 hash, Drive file ID, and sync timestamp in R2 metadata
+4. **Return Summary**: Detailed results with counts of synced/skipped/failed files
+
+## Hash Comparison
+
+The worker uses MD5 hash comparison to avoid unnecessary downloads:
+
+- **Google Drive** provides `md5Checksum` for each file via API
+- **R2** stores hash in object metadata as `x-hash-md5`
+- **Comparison**: Only files with different hashes are downloaded and uploaded
+- **Result**: Significant bandwidth and time savings, especially for large image catalogs
+
+**First sync**: All files are uploaded (no existing hashes to compare)
+
+**Subsequent syncs**: Only changed files are synced
+
+## Image Storage Details
+
+- **Location:** Images are stored in R2 at `{slug}/filename.jpg`
+- **Filename Preservation:** Original filenames from Google Drive are preserved (special characters are sanitized)
+- **Metadata:** Each image includes:
+  - `x-hash-md5`: MD5 hash for change detection
+  - `x-drive-file-id`: Google Drive file ID for reference
+  - `x-synced-at`: ISO timestamp of last sync
+- **Sorting:** Images are sorted alphabetically by filename in Google Drive
+- **Supported Formats:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`
 
 ## API Endpoint
 
-### POST /sync-images
+### GET /sync or POST /sync
 
-Syncs images from Google Drive to R2.
+Triggers a bulk sync of all properties.
 
-**Headers:**
-- `X-Webhook-Secret`: Must match `AIRTABLE_WEBHOOK_SECRET`
+**Headers (optional if SYNC_SECRET is set):**
+- `Authorization: Bearer <SYNC_SECRET>`
 
-**Body:**
-```json
-{
-  "recordId": "recXXXXXXXXXXXXXX",
-  "slug": "property-slug",
-  "imageFolderUrl": "https://drive.google.com/drive/folders/FOLDER_ID"
-}
-```
+**Response:**
+- `200 OK` - Sync completed (check `summary` for details)
+- `401 Unauthorized` - Missing or invalid SYNC_SECRET
+- `500 Internal Server Error` - Configuration or API errors
 
-**Response (Success):**
-```json
-{
-  "success": true,
-  "slug": "property-slug",
-  "imageCount": 5,
-  "images": [
-    "https://pub-xxxxx.r2.dev/properties/property-slug/image-1.jpg",
-    "https://pub-xxxxx.r2.dev/properties/property-slug/image-2.jpg"
-  ]
-}
-```
-
-**Response (Error):**
-```json
-{
-  "success": false,
-  "error": "Error message"
-}
-```
-
-## Testing
-
-### Manual Testing with curl
-
-Before setting up the Airtable automation, test the worker manually:
-
-```bash
-curl -X POST https://your-worker.workers.dev/sync-images \
-  -H "Content-Type: application/json" \
-  -H "X-Webhook-Secret: your-secret" \
-  -d '{
-    "recordId": "recXXXXXXXXXXXXXX",
-    "slug": "test-property-slug",
-    "imageFolderUrl": "https://drive.google.com/drive/folders/FOLDER_ID"
-  }'
-```
-
-**Replace:**
-- `https://your-worker.workers.dev` with your actual Worker URL
-- `your-secret` with the same secret you set in `AIRTABLE_WEBHOOK_SECRET`
-- `recXXXXXXXXXXXXXX` with an actual Airtable record ID (optional, for logging)
-- `test-property-slug` with a property slug (e.g., "downtown-apartment-123")
-- `FOLDER_ID` with a Google Drive folder ID that contains images
-
-**Expected Success Response:**
-```json
-{
-  "success": true,
-  "recordId": "recXXXXXXXXXXXXXX",
-  "slug": "test-property-slug",
-  "imageCount": 5,
-  "images": [
-    "test-property-slug/image1.jpg",
-    "test-property-slug/image2.jpg",
-    ...
-  ]
-}
-```
-
-**Common Errors:**
-- `401 Unauthorized` - Check that `X-Webhook-Secret` header matches your secret
-- `400 Bad Request` - Verify `slug` and `imageFolderUrl` are provided and valid
-- `404 Not Found` - Check that the Google Drive folder contains image files
-- `500 Internal Server Error` - Check worker logs: `npx wrangler tail`
+## Monitoring
 
 ### View Worker Logs
 
@@ -222,44 +282,79 @@ Monitor worker execution in real-time:
 npx wrangler tail
 ```
 
-This shows all requests, responses, and console.log output from the worker.
+This shows:
+- All HTTP requests
+- Cron trigger executions
+- Sync progress and errors
+- Hash comparison results
 
 ### Verify Images in R2
 
-After a successful sync, verify images are in your R2 bucket:
+After a sync, verify images are in your R2 bucket:
 
 1. Go to Cloudflare Dashboard → R2
 2. Select your bucket:
    - Production: `rental-manager-images`
    - Demo: `rental-manager-demo-images`
-3. Navigate to the folder matching your slug (e.g., `test-property-slug/`)
+3. Navigate to a property folder (e.g., `property-slug/`)
 4. You should see all uploaded images with their original filenames
+5. Check object metadata to see stored hashes
 
-## How It Works
+## Troubleshooting
 
-1. **Airtable triggers webhook** when `Image Folder URL` field is updated
-2. **Worker receives POST request** to `/sync-images` endpoint
-3. **Validates webhook secret** from `X-Webhook-Secret` header
-4. **Extracts Google Drive folder ID** from the provided URL
-5. **Lists all image files** in the Drive folder using Google Drive API
-6. **Downloads each image** from Google Drive
-7. **Deletes existing images** for this property from R2 (if any) to avoid duplicates
-8. **Uploads images to R2** at `{slug}/original-filename.jpg` (preserves original filenames)
-9. **Returns success response** with list of uploaded image keys
+### Sync Returns 500 Error
 
-## Image Storage Details
+- **Check worker logs:** `npx wrangler tail`
+- **Verify secrets:** Ensure all required secrets are set
+- **Check Airtable access:** Verify token has read access to base
+- **Check Drive access:** Verify API key works and folders are public
 
-- **Location:** Images are stored in R2 at `{slug}/filename.jpg`
-- **Filename Preservation:** Original filenames from Google Drive are preserved (special characters are sanitized)
-- **Sorting:** Images are sorted alphabetically by filename in Google Drive
-- **Supported Formats:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`
+### No Files Synced
+
+- **Check Airtable:** Ensure properties have `Image Folder URL` field populated
+- **Check Drive folders:** Verify folders contain image files
+- **Check folder permissions:** Folders must be "Anyone with the link can view"
+- **Check logs:** Look for specific error messages
+
+### Files Not Skipping (Always Syncing)
+
+- **Check hash storage:** Verify R2 objects have `x-hash-md5` metadata
+- **First sync is normal:** All files sync on first run
+- **Check logs:** Look for hash comparison messages
+
+### Cron Not Running
+
+- **Check wrangler.toml:** Verify `[triggers]` section exists
+- **Check deployment:** Ensure worker is deployed with cron config
+- **Check logs:** `npx wrangler tail` to see if cron triggers appear
+- **Verify schedule:** Check cron expression is valid
+
+## Performance Considerations
+
+- **Sequential Processing**: Properties and files are processed sequentially to avoid rate limits
+- **Hash Comparison**: Significantly reduces bandwidth for unchanged files
+- **Error Recovery**: Failed properties don't stop the entire sync
+- **Idempotency**: Running sync multiple times is safe (hash comparison prevents duplicates)
+
+## Cost Optimization
+
+- **Hash Comparison**: Only changed files are downloaded, reducing bandwidth costs
+- **Efficient API Usage**: Uses Drive API efficiently with pagination
+- **R2 Storage**: Only stores what's needed, metadata is minimal
+- **Cron Frequency**: Adjust schedule based on your update frequency needs
 
 ## Next Steps
 
 After deploying the worker:
 
-1. **Configure Airtable Webhook** - See `../AIRTABLE_WEBHOOK_SETUP.md` for detailed instructions
-2. **Test with a sample property** - Update `Image Folder URL` in Airtable and verify sync works
-3. **Monitor logs** - Use `npx wrangler tail` to watch for any errors
-4. **Verify in Next.js app** - Check that synced images appear on property pages
+1. ✅ **Test manual trigger** - Run `curl` to verify sync works
+2. ✅ **Monitor first sync** - Use `npx wrangler tail` to watch progress
+3. ✅ **Verify images in R2** - Check that images appear correctly
+4. ✅ **Test hash comparison** - Run sync twice, second should skip unchanged files
+5. ✅ **Adjust cron schedule** - Set frequency based on your needs
+6. ✅ **Verify in Next.js app** - Check that synced images display correctly
 
+For more information, see:
+- `../GOOGLE_DRIVE_SETUP.md` - Google Drive API setup
+- `../R2_SETUP.md` - R2 bucket configuration
+- `../R2_IMAGE_NAMING.md` - Image naming and sorting details

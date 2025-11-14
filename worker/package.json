@@ -5,7 +5,10 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev:demo": "wrangler dev --env demo",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy",
+    "deploy:demo": "wrangler deploy --env demo"
   },
   "keywords": ["cloudflare", "worker", "r2", "google-drive"],
   "author": "",

@@ -29,6 +29,9 @@ yarn-error.log*
 .env
 .env.prod
 
+# worker local secrets
+worker/.dev.vars
+
 
 # vercel
 .vercel

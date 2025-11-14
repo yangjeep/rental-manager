@@ -71,26 +71,13 @@ Images are automatically synced from Google Drive to Cloudflare R2 when you upda
    # Note the Worker URL (e.g., https://rental-manager-image-sync.your-subdomain.workers.dev)
    ```
 
-4. **Configure AirTable Automation**:
-   - In your AirTable base, go to **Automations**
-   - Click **Create automation**
-   - **Trigger**: "When record matches conditions"
-     - Table: `Properties`
-     - Field: `Image Folder URL`
-     - Condition: "is not empty"
-   - **Action**: "Send webhook"
-     - URL: `https://your-worker-url.workers.dev/sync-images`
-     - Method: `POST`
-     - Headers: Add `X-Webhook-Secret` with your secret value
-     - Body (JSON):
-       ```json
-       {
-         "recordId": "{{AIRTABLE_RECORD_ID()}}",
-         "slug": "{{Slug}}",
-         "imageFolderUrl": "{{Image Folder URL}}"
-       }
-       ```
-   - Test the automation and turn it on
+4. **Configure Airtable Automation**:
+   - See `AIRTABLE_WEBHOOK_SETUP.md` for detailed step-by-step instructions
+   - Quick summary:
+     - Create automation with trigger: "When record matches conditions" (Image Folder URL is not empty)
+     - Add action: "Send webhook" to your Worker URL
+     - Configure headers and JSON body as shown in the guide
+     - Test and turn on the automation
 
 **How it works:**
 - Realtor pastes Google Drive folder URL into AirTable

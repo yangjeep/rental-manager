@@ -1,44 +1,66 @@
-<!-- 91155d0e-45d2-4171-aadf-1bbbd8fd8df4 4cb9c2c4-785a-4aab-a475-ecbd85c98cdd -->
-# Add Required Bearer Token Authentication to Cloudflare Worker
+<!-- 91155d0e-45d2-4171-aadf-1bbbd8fd8df4 a9082ad3-7889-4427-8c1f-dd647a2515e4 -->
+# Move Worker to New Repository
 
 ## Overview
 
-The worker currently has optional Bearer token authentication via `SYNC_SECRET`. We need to make authentication required - all HTTP requests must include a valid Bearer token, or they will receive a 401 Unauthorized response.
+Move the worker directory from `/Users/yangjeep/ws/yangjeep/rental-manager/worker` to `/Users/yangjeep/ws/yangjeep/gdrive-cfr2-image-sync`, creating a standalone repository for the Cloudflare Worker.
 
 ## Implementation Plan
 
-### 1. Update Worker Code (`worker/src/index.ts`)
+### 1. Copy Worker Files to New Repository
 
-- Make `SYNC_SECRET` required in the `Env` interface (change from optional to required)
-- Update the authentication check in the `fetch` handler to:
-- Always require `SYNC_SECRET` to be set (return 500 if missing)
-- Always validate Bearer token for all HTTP requests (except OPTIONS preflight)
-- Return 401 Unauthorized if token is missing or invalid
-- Keep CORS preflight (OPTIONS) requests unauthenticated
-- Cron triggers remain unauthenticated (internal Cloudflare calls)
+- Copy all essential files from `worker/` to `gdrive-cfr2-image-sync/`:
+- `src/index.ts` - Main worker code
+- `package.json` - Dependencies and scripts
+- `tsconfig.json` - TypeScript configuration
+- `wrangler.toml` - Cloudflare Worker configuration
+- `README.md` - Documentation
+- `.gitignore` - Git ignore rules
+- `.dev.vars` - Local development secrets (for local testing)
+- Do NOT copy:
+- `node_modules/` - Will be reinstalled
+- `.wrangler/` - Build artifacts
 
-### 2. Update Configuration (`worker/wrangler.toml`)
+### 2. Update Package.json
 
-- Update comments to indicate `SYNC_SECRET` is now a required secret (not optional)
-- Update both production and demo environment documentation
+- Update `name` field from `rental-manager-image-sync-worker` to `gdrive-cfr2-image-sync` (or similar)
+- Keep all scripts and dependencies unchanged
 
-### 3. Update Documentation (`worker/README.md`)
+### 3. Update README.md
 
-- Update setup instructions to indicate `SYNC_SECRET` is required
-- Remove references to "optional" authentication
-- Update usage examples to show Bearer token is always required
-- Update `.dev.vars` example to show `SYNC_SECRET` is required
-- Add note that worker will fail if `SYNC_SECRET` is not configured
+- Remove references to `../docs/` paths (these won't exist in new repo)
+- Update any relative paths that reference parent directory
+- Update setup instructions to reflect standalone repository
+- Keep all technical documentation intact
 
-## Files to Modify
+### 4. Create .gitignore (if needed)
 
-- `worker/src/index.ts` - Make Bearer token auth required
-- `worker/wrangler.toml` - Update secret documentation
-- `worker/README.md` - Update setup and usage instructions
+- Ensure `.gitignore` includes: `node_modules/`, `.wrangler/`, `.dev.vars`, etc.
 
-## Security Considerations
+### 5. Initialize Git Repository (if not already)
 
-- Bearer token will be stored as a Cloudflare secret
-- All HTTP requests (except OPTIONS) require valid Bearer token
-- Worker returns 401 Unauthorized for missing or invalid tokens
-- Worker returns 500 if `SYNC_SECRET` environment variable is not configured
+- Check if `.git` exists in new directory
+- If not, initialize git repository
+- Create initial commit with all worker files
+
+### 6. Cleanup Original Worker Directory
+
+- Remove the `worker/` directory from `/Users/yangjeep/ws/yangjeep/rental-manager/`
+- This completes the migration to the new standalone repository
+
+## Files to Copy
+
+- `worker/src/index.ts` → `gdrive-cfr2-image-sync/src/index.ts`
+- `worker/package.json` → `gdrive-cfr2-image-sync/package.json` (with name update)
+- `worker/tsconfig.json` → `gdrive-cfr2-image-sync/tsconfig.json`
+- `worker/wrangler.toml` → `gdrive-cfr2-image-sync/wrangler.toml`
+- `worker/README.md` → `gdrive-cfr2-image-sync/README.md` (with path updates)
+- `worker/.gitignore` → `gdrive-cfr2-image-sync/.gitignore`
+- `worker/.dev.vars` → `gdrive-cfr2-image-sync/.dev.vars`
+
+## Notes
+
+- `.dev.vars` will be copied over for local development (already contains secrets)
+- User will need to run `npm install` in the new directory
+- User will need to set up secrets in Cloudflare for the new repository
+- The original `worker/` directory will be removed from rental-manager after successful copy

@@ -97,11 +97,12 @@ export async function fetchListings(): Promise<Listing[]> {
   if (!apiToken) {
     // In CI/build environments, return empty array instead of throwing
     // This allows builds to succeed even without D1 credentials
-    if (process.env.CI || process.env.NODE_ENV === 'production') {
-      console.warn("Missing D1_REST_API_TOKEN - returning empty listings array");
+    if (process.env.CI) {
+      console.warn("[BUILD] Missing D1_REST_API_TOKEN - returning empty listings array for build");
       return [];
     }
-    throw new Error("Missing D1_REST_API_TOKEN");
+    // In production runtime, throw error so we know what's wrong
+    throw new Error("Missing D1_REST_API_TOKEN environment variable");
   }
 
   try {
@@ -176,10 +177,11 @@ export async function fetchListings(): Promise<Listing[]> {
   } catch (error) {
     console.error("[D1] Error fetching listings:", error);
     // In CI/build environments, return empty array instead of throwing
-    if (process.env.CI || process.env.NODE_ENV === 'production') {
-      console.warn("D1 fetch failed - returning empty listings array");
+    if (process.env.CI) {
+      console.warn("[BUILD] D1 fetch failed - returning empty listings array for build");
       return [];
     }
+    // In production runtime, re-throw so we can see the actual error
     throw error;
   }
 }

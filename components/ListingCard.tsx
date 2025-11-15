@@ -47,7 +47,7 @@ export default function ListingCard({ listing, onClick, isSelected = false, quer
         </div>
       </div>
       <div className="p-4 space-y-2">
-        <div className="opacity-80">${listing.price} / mo · {listing.bedrooms} BR · {listing.city}</div>
+        <div className="opacity-80">${listing.price} / mo · {listing.bedrooms}B{listing.bathrooms}B · {listing.city}</div>
         <div className="flex gap-2 text-xs opacity-80">
           <Badge label={fmtParkingShort(listing.parking)} />
           <Badge label={fmtPetsShort(listing.pets)} />

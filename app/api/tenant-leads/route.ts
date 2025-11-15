@@ -23,65 +23,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = process.env.AIRTABLE_TOKEN;
-    const baseId = process.env.AIRTABLE_BASE_ID;
-    const table = "tenant-leads";
+    const token = process.env.BASEROW_TENANT_WR_TOKEN;
+    const tableId = "740125";
 
-    if (!token || !baseId) {
-      console.error("Missing AIRTABLE_TOKEN or AIRTABLE_BASE_ID");
+    if (!token) {
+      console.error("Missing BASEROW_TENANT_WR_TOKEN");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
       );
     }
 
-    // Prepare Airtable record
-    const fields: Record<string, any> = {
-      "Title (from Property)": [propertyRecordId],
+    // Prepare Baserow record - field names must match exactly as in Baserow table
+    const rowData: Record<string, any> = {
       "Name": name,
+      "Title (from Property)": [parseInt(propertyRecordId, 10)],
       "Email": email,
       "Phone Number": phone,
     };
 
     if (moveInDate) {
-      fields["Ideal Move-in Date"] = moveInDate;
+      rowData["Ideal Move-in Date"] = moveInDate;
     }
 
     if (numberOfOccupants) {
       const numOccupants = Number(numberOfOccupants);
       if (!isNaN(numOccupants) && numOccupants > 0) {
-        fields["Number of Occupants"] = numOccupants;
+        rowData["Number of Occupants"] = numOccupants;
       }
     }
 
     if (employmentStatus) {
-      fields["Employment Status"] = employmentStatus;
+      rowData["Employment Status"] = employmentStatus;
     }
 
     if (message) {
-      fields["Message"] = message;
+      rowData["Message"] = message;
     }
 
-    // Submit to Airtable
-    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`;
+    // Submit to Baserow
+    // Note: user_field_names=true allows us to use field names instead of field IDs
+    const url = `https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Token ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        records: [
-          {
-            fields,
-          },
-        ],
-      }),
+      body: JSON.stringify(rowData),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("Airtable API error:", response.status, errorData);
+      console.error("Baserow API error:", response.status, errorData);
       return NextResponse.json(
         { error: "Failed to submit form. Please try again." },
         { status: 500 }

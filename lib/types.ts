@@ -1,6 +1,5 @@
 export type Listing = {
   id: string;
-  airtableRecordId?: string;     // Airtable record ID (e.g., "recXXXXXXXXXXXX")
   title: string;
   slug: string;
   price: number;                 // from "Monthly Rent"

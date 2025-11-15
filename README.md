@@ -38,75 +38,24 @@ Table name: `Properties` (default, configurable via `AIRTABLE_TABLE_NAME`)
 
 ### Setting Up Images
 
-This project supports **two image storage methods**:
-1. **Cloudflare R2** (Recommended) - Fast, unlimited bandwidth, automatic sync
-2. **Google Drive** (Fallback) - Manual setup, used as fallback if R2 images unavailable
+This project uses **Cloudflare D1 database** to store image URLs directly, eliminating the need for image sync or API configuration.
 
-#### Option 1: Cloudflare R2 with Automatic Sync (Recommended)
+#### Image Storage and Display
 
-Images are automatically synced from Google Drive to Cloudflare R2 when you update the `Image Folder URL` field in AirTable.
-
-**Setup Steps:**
-
-1. **Set up Cloudflare R2 Bucket** (See `docs/R2_SETUP.md` for detailed instructions)
-   - Create R2 bucket in Cloudflare Dashboard
-   - Enable public access and note the public URL
-   - Add `R2_PUBLIC_URL` to your `.env.local`
-
-2. **Set up Google Drive API** (See `docs/GOOGLE_DRIVE_SETUP.md` for detailed instructions)
-   - Create API key or service account in Google Cloud Console
-   - Enable Google Drive API
-
-3. **Deploy Cloudflare Worker**:
-   - The worker is now in a separate repository: `gdrive-cfr2-image-sync`
-   - See the worker repository for deployment instructions
-   - After deployment, note the Worker URL (e.g., https://rental-manager-image-sync.your-subdomain.workers.dev)
-
-4. **Configure Airtable Automation**:
-   - See `docs/AIRTABLE_WEBHOOK_SETUP.md` for detailed step-by-step instructions
-   - Quick summary:
-     - Create automation with trigger: "When record matches conditions" (Image Folder URL is not empty)
-     - Add action: "Send webhook" to your Worker URL
-     - Configure headers and JSON body as shown in the guide
-     - Test and turn on the automation
+Images are stored as public URLs in the Cloudflare D1 database (in the `image_folder_url_r2_urls` column).
 
 **How it works:**
-- Realtor pastes Google Drive folder URL into AirTable
-- AirTable triggers webhook to Cloudflare Worker
-- Worker downloads images from Drive and uploads to R2 (keeps original filenames)
-- Images stored at: `/{slug}/original-filename.jpg`
-- Next.js lists all images via R2 API and sorts alphanumerically
-- First image (alphabetically) becomes the thumbnail
-- Next.js app fetches images from R2 (fast, unlimited bandwidth)
+- Image URLs are stored as a JSON array in the D1 database
+- Example: `["https://img.rent-in-ottawa.ca/740124/3/image1.jpg", "https://img.rent-in-ottawa.ca/740124/3/image2.jpg"]`
+- Next.js fetches these URLs directly from D1 and renders them
+- The first image in the array is used as the listing thumbnail
+- All images are displayed in the property gallery
+- Images are served from Cloudflare R2 via the public domain `img.rent-in-ottawa.ca`
 
-#### Option 2: Google Drive Only (Fallback/Alternative)
+**No additional configuration needed** - as long as the D1 database contains valid public image URLs, they will be displayed automatically.
 
-If R2 is not set up, images can be fetched directly from Google Drive:
-
-1. **In Airtable**: Add the `Image Folder URL` field to your Properties table. For each property, paste either:
-   - The full Google Drive folder URL (e.g., `https://drive.google.com/drive/folders/1ABC123...`)
-   - Or just the folder ID (e.g., `1ABC123...`)
-
-2. **Deploy Google Apps Script**:
-   - Go to [Google Apps Script](https://script.google.com)
-   - Create a new project
-   - Copy the code from `scripts/apps_script.gs` into the editor
-   - Click "Deploy" → "New deployment"
-   - Choose type: "Web app"
-   - Set "Execute as": "Me"
-   - Set "Who has access": "Anyone"
-   - Click "Deploy" and copy the web app URL
-
-3. **Add to Environment Variables**:
-   - Add `DRIVE_LIST_ENDPOINT=<your-apps-script-url>` to your `.env.local`
-   - The endpoint will be called as: `DRIVE_LIST_ENDPOINT?folder=<folderId>`
-   - It should return a JSON array of image URLs
-
-**Image Resolution Priority:**
-1. Try R2: Lists all images in folder via R2 API, sorts alphanumerically
-2. Fallback to placeholder images if R2 not configured or no images found
-
-**Note:** R2 API credentials are required to list images (no filename conventions assumed).
+**Image Fallback:**
+- If no images are found in the database, placeholder images will be displayed
 
 ## Security / Demo
 
@@ -172,13 +121,10 @@ Results are uploaded as artifacts and the workflow will fail if performance thre
 **Optional:**
 - `AIRTABLE_TABLE_NAME` — Table name (defaults to "Properties")
 
-**For R2 Image Storage (recommended):**
-- `R2_PUBLIC_URL` — Cloudflare R2 public URL (required)
-- `R2_ACCOUNT_ID` — R2 account ID (required for listing images)
-- `R2_ACCESS_KEY_ID` — R2 access key (required for listing images)
-- `R2_SECRET_ACCESS_KEY` — R2 secret key (required for listing images)
-- `R2_BUCKET_NAME` — R2 bucket name (defaults to "rental-manager-images")
+**For D1 Database (required):**
+- `D1_REST_API_URL` — D1 REST API endpoint URL
+- `D1_REST_API_TOKEN` — Bearer token for authentication
+- `D1_TABLE_NAME` — Table name (defaults to "table_740124")
 
-**For image sync (if using R2):**
-- See the `gdrive-cfr2-image-sync` repository for Worker-specific environment variables
+**Note:** Image URLs are stored directly in the D1 database. No additional R2 or Google Drive configuration is needed for image serving.
 

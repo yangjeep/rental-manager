@@ -40,6 +40,31 @@ function parseImageUrls(jsonString: string | null | undefined): string[] {
   }
 }
 
+/**
+ * Parse JSON string with "value" property
+ * Returns the value string if valid JSON, otherwise returns fallback
+ */
+function parseJsonValue(jsonString: string | null | undefined, fallback: string = ""): string {
+  if (!jsonString || typeof jsonString !== "string" || jsonString.trim() === "") {
+    return fallback;
+  }
+  
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && typeof parsed === "object" && "value" in parsed && typeof parsed.value === "string") {
+      return parsed.value;
+    }
+    // If it's already a plain string, return it
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+    return fallback;
+  } catch (error) {
+    // If not valid JSON, treat as plain string
+    return jsonString;
+  }
+}
+
 
 // ---------- D1 row type ----------
 type D1Row = {
@@ -94,11 +119,13 @@ export async function fetchListings(): Promise<Listing[]> {
       const price: number = toNum(row.monthly_rent);
       const bedrooms: number = toNum(row.bedrooms);
       const bathrooms: number | undefined = row.bathrooms != null ? toNum(row.bathrooms) : undefined;
-      const status: string = row.status ?? "Available";
+      // Parse status from JSON string (extracts "value" property if JSON, otherwise uses plain string)
+      const status: string = parseJsonValue(row.status, "Available");
       const city: string = row.city ?? "";
       const address: string | undefined = row.address ? row.address : undefined;
       const description: string | undefined = row.description ? row.description : undefined;
-      const pets: string | undefined = row.pets ? row.pets : undefined;
+      // Parse pets from JSON string (extracts "value" property if JSON, otherwise uses plain string)
+      const pets: string | undefined = row.pets ? parseJsonValue(row.pets) : undefined;
       const parking: string | undefined = row.parking ? String(row.parking).trim() : undefined;
       const imageFolderUrl: string | undefined = row.image_folder_url ? row.image_folder_url : undefined;
 

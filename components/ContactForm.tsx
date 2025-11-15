@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 type Property = {
   title: string;
   recordId?: string;
+  status?: string;
 };
 
 // Helper function to get the first day of next month in YYYY-MM-DD format
@@ -152,11 +153,27 @@ export default function ContactForm({ listingTitle }: { listingTitle: string }) 
             <option value="">
               {loadingProperties ? "Loading properties..." : "Select a property..."}
             </option>
-            {properties.map((prop) => (
-              <option key={prop.recordId || prop.title} value={prop.recordId || ""}>
-                {prop.title}
-              </option>
-            ))}
+            {properties.map((prop) => {
+              const isUnavailable = prop.status === "Pending" || prop.status === "Rented";
+              let displayText = prop.title;
+              
+              if (isUnavailable) {
+                displayText += " -- Currently Rented, Future rental";
+              } else if (prop.status) {
+                displayText += ` (${prop.status})`;
+              }
+              
+              return (
+                <option 
+                  key={prop.recordId || prop.title} 
+                  value={prop.recordId || ""}
+                  style={isUnavailable ? { opacity: 0.5 } : {}}
+                >
+                  {displayText}
+                </option>
+              );
+            })}
+            <option value="other-inquiries">Other Inquiries</option>
           </select>
           {errors.propertyRecordId && <p className="text-red-400 text-sm mt-1">{errors.propertyRecordId}</p>}
         </div>

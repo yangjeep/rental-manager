@@ -37,10 +37,17 @@ export async function POST(request: NextRequest) {
     // Prepare Baserow record - field names must match exactly as in Baserow table
     const rowData: Record<string, any> = {
       "Name": name,
-      "Title (from Property)": [parseInt(propertyRecordId, 10)],
       "Email": email,
       "Phone Number": phone,
     };
+
+    // Only include property link if it's not "other-inquiries"
+    if (propertyRecordId !== "other-inquiries") {
+      const propertyId = parseInt(propertyRecordId, 10);
+      if (!isNaN(propertyId)) {
+        rowData["Title (from Property)"] = [propertyId];
+      }
+    }
 
     if (moveInDate) {
       rowData["Ideal Move-in Date"] = moveInDate;

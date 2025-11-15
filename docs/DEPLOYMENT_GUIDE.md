@@ -1,200 +1,230 @@
-# Image Sync Deployment Guide
-
-Complete step-by-step guide to deploy the automated image sync system.
+# Deployment Guide
 
 ## Overview
 
-Your realtor will simply paste a Google Drive folder URL into AirTable. The system automatically:
-1. AirTable triggers a webhook to Cloudflare Worker
-2. Worker downloads images from Google Drive
-3. Worker uploads images to R2 bucket
-4. Next.js app displays images from R2 (with Drive fallback)
+The rental manager application fetches property listings and images directly from a Cloudflare D1 database. Images are stored as public URLs in the database, eliminating the need for complex image sync workflows.
+
+## Architecture
+
+**Data Flow:**
+1. Property data stored in Cloudflare D1 database
+2. Image URLs stored as JSON arrays in `image_folder_url_r2_urls` column
+3. Next.js fetches data via D1 REST API
+4. Images rendered directly from public URLs
+5. Images served from Cloudflare R2 via `img.rent-in-ottawa.ca` domain
+
+**No image sync or API credentials needed!** ✨
+
+---
 
 ## Deployment Checklist
 
-### ✅ Step 1: Set up Cloudflare R2 Bucket
+### ✅ Step 1: Configure D1 Database Access
 
-**Status:** Configuration completed in code ✅
-
-**Manual steps required:**
-
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) → R2
-2. Create bucket: `rental-manager-images`
-3. Go to Settings → Public Access → Click "Allow Access"
-4. Copy the public URL (already configured: `https://pub-8ad53ad0fd6f414fad3c0fdb189ec060.r2.dev`)
-
-📖 Detailed instructions: See `R2_SETUP.md`
-
----
-
-### ✅ Step 2: Set up Google Drive API
-
-**Status:** Documentation ready ✅
-
-**Manual steps required:**
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create/select project
-3. Enable Google Drive API
-4. Create API Key (for public folders) OR Service Account (for private folders)
-5. Save credentials for next step
-
-📖 Detailed instructions: See `GOOGLE_DRIVE_SETUP.md`
-
----
-
-### ✅ Step 3: Deploy Cloudflare Worker
-
-**Status:** Code ready, needs deployment ⏳
-
-**Manual steps required:**
-
-The Cloudflare Worker is now in a separate repository: `gdrive-cfr2-image-sync`
-
-**Deployment steps:**
-1. Clone the worker repository
-2. Install dependencies: `npm install`
-3. Set up secrets (see worker repository README for details):
-   - `GOOGLE_DRIVE_API_KEY` (or `GOOGLE_SERVICE_ACCOUNT_JSON`)
-   - `AIRTABLE_TOKEN`
-   - `AIRTABLE_BASE_ID`
-   - `SYNC_SECRET` (required for Bearer token authentication)
-4. Deploy: `npm run deploy`
-5. Copy the Worker URL from the output
-   - Example: https://rental-manager-image-sync.your-subdomain.workers.dev
-
-📖 Detailed instructions: See the `gdrive-cfr2-image-sync` repository README
-
----
-
-### ✅ Step 4: Configure AirTable Automation
-
-**Status:** Documentation ready ✅
-
-**Manual steps required:**
-
-1. Open your AirTable base
-2. Go to **Automations** (top right)
-3. Click **Create automation**
-
-**Configure Trigger:**
-- Name: "Sync Property Images to R2"
-- Trigger: "When record matches conditions"
-  - Table: `Properties`
-  - Conditions: When "Image Folder URL" is not empty
-
-**Configure Action:**
-- Action: "Send webhook"
-- URL: `https://your-worker-url.workers.dev/sync-images` (from Step 3)
-- Method: `POST`
-- Headers:
-  ```
-  Content-Type: application/json
-  X-Webhook-Secret: YOUR_SECRET_FROM_STEP_3
-  ```
-- Body (select "Custom JSON"):
-  ```json
-  {
-    "recordId": "{{AIRTABLE_RECORD_ID()}}",
-    "slug": "{{Slug}}",
-    "imageFolderUrl": "{{Image Folder URL}}"
-  }
-  ```
-
-4. Click **Test action** with a property that has an Image Folder URL
-5. Verify images appear in R2 bucket
-6. Turn on the automation
-
----
-
-### ✅ Step 5: Verify Next.js Configuration
-
-**Status:** Code updated ✅
-
-Your `.env` and `.env.local` files already have:
-```bash
-R2_PUBLIC_URL=https://pub-8ad53ad0fd6f414fad3c0fdb189ec060.r2.dev
-```
-
-No additional steps needed!
-
----
-
-## Testing the Complete Flow
-
-### Test 1: Manual Sync
+**Required environment variables:**
 
 ```bash
-# Test the worker directly
-curl -X POST https://your-worker-url.workers.dev/sync-images \
-  -H "Content-Type: application/json" \
-  -H "X-Webhook-Secret: YOUR_SECRET" \
-  -d '{
-    "recordId": "recTest123",
-    "slug": "test-property",
-    "imageFolderUrl": "https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
-  }'
+D1_REST_API_URL=https://your-d1-rest-api.workers.dev
+D1_REST_API_TOKEN=your_bearer_token
+D1_TABLE_NAME=table_740124
 ```
 
-Expected response:
-```json
-{
-  "success": true,
-  "slug": "test-property",
-  "imageCount": 5,
-  "images": [...]
+**How to get these:**
+1. Deploy the `d1-secret-rest` Cloudflare Worker (provides REST API for D1)
+2. Note the Worker URL (`D1_REST_API_URL`)
+3. Generate a secure token for authentication (`D1_REST_API_TOKEN`)
+4. Confirm your table name (`D1_TABLE_NAME`)
+
+**Database Schema:**
+
+Your D1 table should have these columns:
+- `id` - INTEGER (primary key)
+- `title` - TEXT
+- `slug` - INTEGER
+- `city` - TEXT
+- `address` - TEXT
+- `status` - TEXT (JSON string with "value" property)
+- `monthly_rent` - REAL
+- `bedrooms` - INTEGER
+- `bathrooms` - REAL
+- `parking` - TEXT
+- `pets` - TEXT (JSON string with "value" property)
+- `description` - TEXT
+- `image_folder_url` - TEXT (legacy, optional)
+- `image_folder_url_r2_urls` - TEXT (JSON array of image URLs) **← Important!**
+- `created_at` - TEXT
+- `updated_at` - TEXT
+
+---
+
+### ✅ Step 2: Configure Airtable (Optional)
+
+If you're using the contact form:
+
+```bash
+AIRTABLE_TOKEN=your_token
+AIRTABLE_BASE_ID=your_base_id
+AIRTABLE_TABLE_NAME=Properties
+```
+
+The contact form submits to a "tenant-leads" table in the same Airtable base.
+
+---
+
+### ✅ Step 3: Configure Next.js Image Optimization
+
+**Already configured in `next.config.mjs`:**
+
+```javascript
+images: {
+  remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'img.rent-in-ottawa.ca',
+      pathname: '/**',
+    },
+  ],
 }
 ```
 
-### Test 2: Via AirTable
+This allows Next.js to optimize images from your R2 public domain.
 
-1. Open a property in AirTable
-2. Paste a Google Drive folder URL into "Image Folder URL" field
-3. Wait 5-10 seconds
-4. Check R2 bucket for images at: `/properties/{slug}/image-1.jpg`
-5. Refresh your Next.js app - images should appear!
+**No additional configuration needed!**
 
-### Test 3: Verify Fallback
+---
 
-1. Remove `R2_PUBLIC_URL` from `.env.local` temporarily
-2. Restart dev server: `npm run dev`
-3. Images should still load from Google Drive (via DRIVE_LIST_ENDPOINT)
-4. Re-add `R2_PUBLIC_URL` and restart
+## Deployment Options
+
+### Option 1: Vercel (Recommended)
+
+1. **Connect your repository:**
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   - Click "Add New Project"
+   - Import your Git repository
+
+2. **Configure environment variables:**
+   - Add all required variables from `.env.example`
+   - Include `D1_REST_API_URL`, `D1_REST_API_TOKEN`, `D1_TABLE_NAME`
+
+3. **Deploy:**
+   - Click "Deploy"
+   - Vercel will automatically detect Next.js and build
+
+4. **Set up custom domain (optional):**
+   - Go to Project Settings → Domains
+   - Add your custom domain
+
+### Option 2: Self-Hosted
+
+```bash
+# Install dependencies
+npm install
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+**Environment variables:**
+- Copy `.env.example` to `.env.local`
+- Fill in all required values
+- Never commit `.env.local` to Git
+
+---
+
+## Testing Your Deployment
+
+### Test 1: Data Fetching
+
+```bash
+# Check D1 API is accessible
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-d1-rest-api.workers.dev/tables/table_740124
+```
+
+Expected: JSON array of property records
+
+### Test 2: Image URLs
+
+Verify that your D1 database has valid image URLs in the `image_folder_url_r2_urls` column:
+
+```json
+["https://img.rent-in-ottawa.ca/740124/3/image1.jpg", "https://img.rent-in-ottawa.ca/740124/3/image2.jpg"]
+```
+
+Visit these URLs directly in your browser to ensure they're accessible.
+
+### Test 3: Next.js Application
+
+1. Visit your deployment URL
+2. Check that properties are displayed
+3. Verify images load correctly
+4. Test the contact form (if configured)
+
+---
+
+## Updating Image URLs
+
+To add or update images for a property:
+
+1. **Upload images to Cloudflare R2** bucket with public access
+2. **Get public URLs** for each image
+3. **Update D1 database** - set `image_folder_url_r2_urls` column to JSON array:
+   ```json
+   ["https://img.rent-in-ottawa.ca/PROPERTY_ID/1/photo1.jpg", "https://img.rent-in-ottawa.ca/PROPERTY_ID/1/photo2.jpg"]
+   ```
+4. **Trigger revalidation** (optional):
+   ```bash
+   curl https://your-app.vercel.app/api/revalidate?secret=YOUR_REVALIDATE_SECRET
+   ```
 
 ---
 
 ## Troubleshooting
 
-### Images not syncing from Drive to R2
+### Images not displaying
 
-1. **Check Worker logs:**
-   - Navigate to the worker repository
-   - Run `npx wrangler tail` to view logs
-   - Trigger the sync and watch for errors
+1. **Check image URLs in D1:**
+   - Query your D1 database
+   - Verify `image_folder_url_r2_urls` contains valid JSON array
+   - Test URLs in browser
 
-2. **Common issues:**
-   - Drive folder not shared publicly (if using API key)
-   - Wrong folder ID in AirTable
-   - Webhook secret mismatch
-   - R2 bucket binding not configured in `wrangler.toml`
+2. **Check Next.js logs:**
+   - Look for image loading errors
+   - Verify `remotePatterns` configuration
 
-### Images not displaying in Next.js
+3. **Check CORS:**
+   - Ensure R2 bucket allows public access
+   - Verify image domain matches `remotePatterns`
 
-1. **Check browser console** for 404 errors
-2. **Verify R2 public URL** is correct in `.env.local`
-3. **Check image paths** in R2 bucket (should be `/properties/{slug}/image-1.jpg`)
-4. **Clear Next.js cache:**
+### Properties not loading
+
+1. **Check D1 API access:**
+   - Verify `D1_REST_API_URL` is correct
+   - Verify `D1_REST_API_TOKEN` is valid
+   - Test API endpoint with curl
+
+2. **Check Next.js logs:**
+   - Look for fetch errors
+   - Verify environment variables are set
+
+3. **Clear Next.js cache:**
    ```bash
    rm -rf .next
-   npm run dev
+   npm run build
    ```
 
-### AirTable automation not triggering
+### Contact form not working
 
-1. **Check automation is turned ON** in AirTable
-2. **Verify trigger condition** matches (field not empty)
-3. **Check webhook URL** is correct
-4. **Test webhook manually** with curl command above
+1. **Check Airtable credentials:**
+   - Verify `AIRTABLE_TOKEN` is valid
+   - Verify `AIRTABLE_BASE_ID` is correct
+   - Verify "tenant-leads" table exists
+
+2. **Check Airtable table schema:**
+   - Required fields: Title (from Property), Name, Email, Phone Number
 
 ---
 
@@ -202,45 +232,96 @@ Expected response:
 
 ### Cloudflare Free Tier
 - **R2 Storage:** 10 GB/month free
-- **R2 Operations:** 1M writes, 10M reads/month free
 - **R2 Bandwidth:** Unlimited free ✨
+- **D1 Database:** 5 GB storage free, 5M reads/day free
 - **Worker Requests:** 100,000/day free
 
+### Vercel Free Tier
+- **Bandwidth:** 100 GB/month
+- **Serverless Function Executions:** 100 GB-hours/month
+- **Image Optimization:** 1,000 source images, 5,000 optimizations/month
+
 ### Estimated Usage (50 properties, 5 images each)
-- **Storage:** ~125 MB (well under 10 GB)
-- **Monthly operations:** ~500 writes, ~10,000 reads
+- **R2 Storage:** ~125 MB (well under 10 GB)
+- **D1 Queries:** ~10,000/month (well under 5M/day)
+- **Vercel:** Within free tier limits
 - **Cost:** $0/month 🎉
 
 ---
 
-## Next Steps
+## Performance Optimization
 
-After completing deployment:
+### ISR (Incremental Static Regeneration)
 
-1. ✅ Update your realtor's documentation
-   - "Just paste the Google Drive folder URL into AirTable"
-   - Images will sync automatically in 5-10 seconds
+The homepage uses ISR with a 60-second revalidation period (configurable via `REVALIDATE_SECONDS`):
 
-2. ✅ Monitor Worker logs for first few days
-   - Navigate to the worker repository
-   - Run `npx wrangler tail` to view logs
+```typescript
+export const revalidate = Number(process.env.REVALIDATE_SECONDS || 60);
+```
 
-3. ✅ Set up custom domain for Worker (optional)
-   - More professional webhook URL
-   - Configure in Cloudflare Dashboard → Workers → your worker → Settings → Triggers
+**Benefits:**
+- Fast page loads (static HTML)
+- Fresh data (revalidates every 60 seconds)
+- Low server load
 
-4. ✅ Consider adding notification on sync completion
-   - Email realtor when images are synced
-   - Add to Worker code using Cloudflare Email Workers or external service
+### Manual Revalidation
+
+Force immediate revalidation using the API endpoint:
+
+```bash
+curl https://your-app.vercel.app/api/revalidate?secret=YOUR_SECRET
+```
+
+Set `REVALIDATE_SECRET` in your environment variables.
+
+---
+
+## Security
+
+### Basic Auth (Optional)
+
+Enable Basic Auth for demo/staging environments:
+
+```bash
+DEMO_USER=demo
+DEMO_PASS=demo123
+```
+
+Leave `DEMO_USER` unset in production for public access.
+
+### Search Engine Indexing
+
+Control search engine indexing:
+
+```bash
+# Block search engines in demo/staging
+DEMO_NOINDEX=true
+
+# Allow search engines in production (leave unset or false)
+# DEMO_NOINDEX=false
+```
+
+---
+
+## Migration from Old System
+
+If you're migrating from the old Google Drive + R2 API workflow:
+
+📖 See `MIGRATION_TO_D1_IMAGES.md` for detailed migration guide.
+
+**Key changes:**
+- ❌ No R2 API credentials needed
+- ❌ No Google Drive API setup needed
+- ❌ No Cloudflare Worker for image sync needed
+- ✅ Image URLs stored directly in D1
+- ✅ Simpler, faster, more reliable
 
 ---
 
 ## Support
 
-- **R2 Setup:** See `R2_SETUP.md`
-- **Google Drive API:** See `GOOGLE_DRIVE_SETUP.md`
-- **Worker Details:** See the `gdrive-cfr2-image-sync` repository README
-- **Main Documentation:** See `README.md`
+- **Main Documentation:** `README.md`
+- **Migration Guide:** `MIGRATION_TO_D1_IMAGES.md`
+- **API Routes:** Check `/app/api/` directory for endpoint implementations
 
 Happy deploying! 🚀
-
